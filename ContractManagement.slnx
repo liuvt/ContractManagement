@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="src/ContractManagement.Domain/ContractManagement.Domain.csproj" />
+  <Project Path="src/ContractManagement.Application/ContractManagement.Application.csproj" />
+  <Project Path="src/ContractManagement.Infrastructure/ContractManagement.Infrastructure.csproj" />
+  <Project Path="src/ContractManagement.Web/ContractManagement.Web.csproj" />
+</Solution>

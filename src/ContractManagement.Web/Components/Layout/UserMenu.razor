@@ -1,0 +1,8 @@
+<AuthorizeView><Authorized Context="ctx"><MudMenu Icon="@Icons.Material.Filled.AccountCircle" Color="Color.Inherit">
+    <MudDivider/><MudMenuItem>
+                <form method="post"
+                      action="/account/logout/submit">
+            <AntiforgeryToken/>
+        <button type="submit" class="logout-button">Đăng xuất</button>
+    </form>
+        </MudMenuItem></MudMenu></Authorized></AuthorizeView>

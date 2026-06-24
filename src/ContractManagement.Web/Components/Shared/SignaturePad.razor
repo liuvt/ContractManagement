@@ -1,0 +1,77 @@
+@inject IJSRuntime JSRuntime
+
+<MudPaper Outlined="true"
+          Class="pa-3">
+
+    <canvas id="@CanvasId"
+            class="signature-surface">
+    </canvas>
+
+    <MudStack Row="true"
+              Spacing="2"
+              Class="mt-3">
+
+        <MudButton Variant="Variant.Outlined"
+                   Color="Color.Default"
+                   StartIcon="@Icons.Material.Filled.Delete"
+                   OnClick="ClearAsync">
+
+            Xóa chữ ký
+
+        </MudButton>
+
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Check"
+                   OnClick="SaveAsync">
+
+            Xác nhận chữ ký
+
+        </MudButton>
+
+    </MudStack>
+
+</MudPaper>
+
+@code {
+    private string CanvasId { get; }
+        = $"signature-{Guid.NewGuid():N}";
+
+    [Parameter]
+    public EventCallback<string> OnSignatureSaved { get; set; }
+
+    protected override async Task OnAfterRenderAsync(
+        bool firstRender)
+    {
+        if (!firstRender)
+            return;
+
+        await JSRuntime.InvokeVoidAsync(
+            "signaturePad.initialize",
+            CanvasId);
+    }
+
+    public async Task ClearAsync()
+    {
+        await JSRuntime.InvokeVoidAsync(
+            "signaturePad.clear",
+            CanvasId);
+    }
+
+    public async Task<string?> GetSignatureAsync()
+    {
+        return await JSRuntime.InvokeAsync<string?>(
+            "signaturePad.getData",
+            CanvasId);
+    }
+
+    private async Task SaveAsync()
+    {
+        var signature = await GetSignatureAsync();
+
+        if (string.IsNullOrWhiteSpace(signature))
+            return;
+
+        await OnSignatureSaved.InvokeAsync(signature);
+    }
+}

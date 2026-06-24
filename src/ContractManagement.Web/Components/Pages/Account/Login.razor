@@ -1,0 +1,81 @@
+@page "/account/login"
+@layout AuthLayout
+@attribute [AllowAnonymous]
+<PageTitle>Đăng nhập</PageTitle>
+<MudText Typo="Typo.h4">Đăng nhập</MudText>
+<MudText Color="Color.Secondary" Class="mb-5">Dùng mã tài xế, số điện thoại hoặc email.</MudText>
+@if (!string.IsNullOrWhiteSpace(ErrorMessage))
+{
+    <MudAlert Severity="Severity.Error" Class="mb-4">@ErrorMessage</MudAlert>
+}
+<form method="post"
+      action="/account/login/submit"
+      class="login-form">
+
+    <input type="hidden"
+           name="ReturnUrl"
+           value="@ReturnUrl" />
+
+    <div class="mb-4">
+        <label for="loginName"
+               class="login-label">
+            Tài khoản
+        </label>
+
+        <input id="loginName"
+               name="LoginName"
+               type="text"
+               autocomplete="username"
+               required />
+    </div>
+
+    <div class="mb-4">
+        <label for="password"
+               class="login-label">
+            Mật khẩu
+        </label>
+
+        <input id="password"
+               name="Password"
+               type="password"
+               autocomplete="current-password"
+               required />
+    </div>
+
+    <label class="remember-row">
+        <input type="checkbox"
+               name="RememberMe"
+               value="true" />
+
+        <span>Duy trì đăng nhập</span>
+    </label>
+
+    <button type="submit"
+            class="login-submit">
+        Đăng nhập
+    </button>
+
+</form>
+<MudAlert Severity="Severity.Info" Variant="Variant.Text" Class="mt-5">Tài khoản mẫu: admin / Admin@123456. Hãy đổi mật khẩu sau lần đăng nhập đầu.</MudAlert>
+
+@code {
+    [SupplyParameterFromQuery(Name = "returnUrl")]
+    public string? ReturnUrl { get; set; }
+
+    [SupplyParameterFromQuery(Name = "error")]
+    public string? ErrorCode { get; set; }
+
+    private string? ErrorMessage => ErrorCode switch
+    {
+        "invalid" =>
+            "Tài khoản hoặc mật khẩu không chính xác.",
+
+        "locked" =>
+            "Tài khoản đang bị khóa tạm thời.",
+
+        "inactive" =>
+            "Tài khoản đã ngừng hoạt động.",
+
+        _ => null
+    };
+}

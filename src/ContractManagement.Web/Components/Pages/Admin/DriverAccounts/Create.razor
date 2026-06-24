@@ -1,0 +1,141 @@
+@page "/admin/driver-accounts/create"
+@attribute [Authorize(Roles = "Admin")]
+@inject IDriverAccountService DriverAccountService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>Thêm tài khoản tài xế</PageTitle>
+
+<PageHeader Title="Thêm tài khoản tài xế"
+            Subtitle="Tạo tài khoản đăng nhập cho tài xế." />
+
+<MudPaper Outlined="true"
+          Class="pa-4">
+
+    <MudForm @ref="_form">
+
+        <MudGrid>
+            <MudItem xs="12" md="6">
+                <MudTextField T="string"
+                              Label="Tên đăng nhập"
+                              @bind-Value="_model.UserName"
+                              Variant="Variant.Outlined"
+                              Required="true"
+                              RequiredError="Vui lòng nhập tên đăng nhập." />
+            </MudItem>
+
+            <MudItem xs="12" md="6">
+                <MudTextField T="string"
+                              Label="Mật khẩu"
+                              @bind-Value="_model.Password"
+                              Variant="Variant.Outlined"
+                              InputType="InputType.Password"
+                              Required="true"
+                              RequiredError="Vui lòng nhập mật khẩu." />
+            </MudItem>
+
+            <MudItem xs="12" md="6">
+                <MudTextField T="string"
+                              Label="Họ và tên"
+                              @bind-Value="_model.FullName"
+                              Variant="Variant.Outlined"
+                              Required="true" />
+            </MudItem>
+
+            <MudItem xs="12" md="6">
+                <MudTextField T="string"
+                              Label="Mã nhân viên"
+                              @bind-Value="_model.EmployeeCode"
+                              Variant="Variant.Outlined" />
+            </MudItem>
+
+            <MudItem xs="12" md="6">
+                <MudTextField T="string"
+                              Label="Số điện thoại"
+                              @bind-Value="_model.PhoneNumber"
+                              Variant="Variant.Outlined"
+                              InputType="InputType.Telephone" />
+            </MudItem>
+
+            <MudItem xs="12" md="6">
+                <MudTextField T="string"
+                              Label="Email"
+                              @bind-Value="_model.Email"
+                              Variant="Variant.Outlined"
+                              InputType="InputType.Email" />
+            </MudItem>
+
+        </MudGrid>
+
+        <MudStack Row="true"
+                  Justify="Justify.FlexEnd"
+                  Spacing="2"
+                  Class="mt-5">
+
+            <MudButton Variant="Variant.Outlined"
+                       OnClick="Cancel">
+
+                Hủy
+
+            </MudButton>
+
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       Disabled="_saving"
+                       StartIcon="@Icons.Material.Filled.Save"
+                       OnClick="SaveAsync">
+
+                Lưu tài khoản
+
+            </MudButton>
+
+        </MudStack>
+
+    </MudForm>
+
+</MudPaper>
+
+@code {
+    private MudForm? _form;
+    private bool _saving;
+
+    private readonly CreateDriverAccountRequest _model = new();
+
+    private async Task SaveAsync()
+    {
+        await _form!.Validate();
+
+        if (!_form.IsValid)
+            return;
+
+        try
+        {
+            _saving = true;
+
+            await DriverAccountService.CreateAsync(_model);
+
+            Snackbar.Add(
+                "Tạo tài khoản thành công.",
+                Severity.Success);
+
+            Navigation.NavigateTo(
+                "/admin/driver-accounts");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(
+                ex.Message,
+                Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private void Cancel()
+    {
+        Navigation.NavigateTo(
+            "/admin/driver-accounts");
+    }
+}

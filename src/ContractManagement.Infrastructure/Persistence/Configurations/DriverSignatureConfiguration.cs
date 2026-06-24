@@ -1,0 +1,5 @@
+using ContractManagement.Domain.Signatures;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+namespace ContractManagement.Infrastructure.Persistence.Configurations;
+public sealed class DriverSignatureConfiguration : IEntityTypeConfiguration<DriverSignature> { public void Configure(EntityTypeBuilder<DriverSignature> b) { b.ToTable("DriverSignatures"); b.HasKey(x => x.Id); b.Property(x => x.SignatureFileUrl).HasMaxLength(500).IsRequired(); b.Property(x => x.SignatureHash).HasMaxLength(128).IsRequired(); b.Property(x => x.SignatureVectorJson).HasColumnType("nvarchar(max)"); b.Property(x => x.RowVersion).IsRowVersion(); b.HasOne(x => x.Driver).WithMany(x => x.DriverSignatures).HasForeignKey(x => x.DriverId).OnDelete(DeleteBehavior.Restrict); b.HasIndex(x => new { x.DriverId, x.Version }).IsUnique().HasDatabaseName("UX_DriverSignatures_DriverId_Version"); b.HasIndex(x => new { x.DriverId, x.IsCurrent }).HasFilter("[IsCurrent] = 1 AND [IsDeleted] = 0").IsUnique().HasDatabaseName("UX_DriverSignatures_Current"); b.HasQueryFilter(x => !x.IsDeleted); } }

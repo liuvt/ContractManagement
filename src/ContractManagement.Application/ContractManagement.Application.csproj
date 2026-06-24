@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../ContractManagement.Domain/ContractManagement.Domain.csproj" />
+  </ItemGroup>
+</Project>

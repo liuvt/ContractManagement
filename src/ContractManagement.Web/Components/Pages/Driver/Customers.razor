@@ -1,0 +1,5 @@
+@page "/driver/customers"
+@attribute [Authorize(Roles="Driver")]
+<PageHeader Title="Khách hàng" Subtitle="Tra cứu nhanh theo số điện thoại hoặc CCCD."/>
+<MudTextField T="string" Label="Tìm theo số điện thoại" Variant="Variant.Outlined" Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Search" />
+<MudAlert Severity="Severity.Info" Class="mt-4">Trang mẫu, sẵn sàng nối Customer service.</MudAlert>

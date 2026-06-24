@@ -1,0 +1,735 @@
+﻿@page "/driver/profile"
+@page "/account/profile"
+
+@attribute [Authorize(Roles = "Driver")]
+
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Identity
+@using ContractManagement.Domain.Identity
+@using ContractManagement.Application.Admins.DriverAccounts
+@using ContractManagement.Application.Admins.DriverProfiles
+@using ContractManagement.Application.Abstractions
+
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject UserManager<ApplicationUser> UserManager
+@inject IDriverAccountService DriverAccountService
+@inject IDriverProfileService DriverProfileService
+@inject NavigationManager Navigation
+
+<PageTitle>Thông tin cá nhân</PageTitle>
+
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate="true"
+                       Color="Color.Primary" />
+
+    <MudText Typo="Typo.body2"
+             Color="Color.Secondary"
+             Class="mt-2">
+        Đang tải thông tin cá nhân...
+    </MudText>
+}
+else if (!string.IsNullOrWhiteSpace(_errorMessage))
+{
+    <MudAlert Severity="Severity.Error"
+              Variant="Variant.Outlined">
+
+        @_errorMessage
+
+    </MudAlert>
+}
+else if (_account is null)
+{
+    <MudAlert Severity="Severity.Warning"
+              Variant="Variant.Outlined">
+
+        Không tìm thấy thông tin tài khoản.
+
+    </MudAlert>
+}
+else
+{
+    <PageHeader Title="Thông tin cá nhân"
+                Subtitle="Thông tin tài khoản và hồ sơ tài xế">
+
+        <MudButton Variant="Variant.Outlined"
+                   StartIcon="@Icons.Material.Filled.Refresh"
+                   Disabled="@_loading"
+                   OnClick="@LoadAsync">
+
+            Tải lại
+
+        </MudButton>
+
+    </PageHeader>
+
+    @* =====================================================
+       THÔNG TIN TỔNG QUAN
+       ===================================================== *@
+
+    <MudPaper Outlined="true"
+              Class="pa-4 mb-4">
+
+        <MudStack Row="true"
+                  AlignItems="AlignItems.Center"
+                  Spacing="3">
+
+            @if (!string.IsNullOrWhiteSpace(_profile?.AvatarUrl))
+            {
+                <MudAvatar Size="Size.Large"
+                           Image="@_profile.AvatarUrl" />
+            }
+            else
+            {
+                <MudAvatar Size="Size.Large"
+                           Color="Color.Primary">
+
+                    @GetInitials(_account.FullName)
+
+                </MudAvatar>
+            }
+
+            <MudStack Spacing="1"
+                      Class="flex-grow-1">
+
+                <MudText Typo="Typo.h5">
+                    @DisplayValue(_account.FullName)
+                </MudText>
+
+                <MudText Typo="Typo.body2"
+                         Color="Color.Secondary">
+
+                    @DisplayValue(_account.EmployeeCode)
+
+                    @if (!string.IsNullOrWhiteSpace(_profile?.AreaCode))
+                    {
+                        <span> • @_profile.AreaCode</span>
+                    }
+
+                </MudText>
+
+            </MudStack>
+
+        </MudStack>
+
+    </MudPaper>
+
+    <MudGrid>
+
+        @* =====================================================
+           THÔNG TIN TÀI KHOẢN
+           ===================================================== *@
+
+        <MudItem xs="12" md="6">
+
+            <MudPaper Outlined="true"
+                      Class="pa-4 h-100">
+
+                <MudStack Row="true"
+                          AlignItems="AlignItems.Center"
+                          Spacing="2"
+                          Class="mb-3">
+
+                    <MudIcon Icon="@Icons.Material.Filled.AccountCircle"
+                             Color="Color.Primary" />
+
+                    <MudText Typo="Typo.h6">
+                        Thông tin tài khoản
+                    </MudText>
+
+                </MudStack>
+
+                <MudDivider Class="mb-3" />
+
+                <MudList T="string"
+                         Dense="true">
+
+                    <InfoListItem Label="Tên đăng nhập"
+                                  Value="@_account.UserName"
+                                  Icon="@Icons.Material.Filled.Person" />
+
+                    <InfoListItem Label="Họ và tên"
+                                  Value="@_account.FullName"
+                                  Icon="@Icons.Material.Filled.Badge" />
+
+                    <InfoListItem Label="Mã nhân viên"
+                                  Value="@_account.EmployeeCode"
+                                  Icon="@Icons.Material.Filled.Pin" />
+
+                    <InfoListItem Label="Số điện thoại"
+                                  Value="@_account.PhoneNumber"
+                                  Icon="@Icons.Material.Filled.Phone" />
+
+                    <InfoListItem Label="Email"
+                                  Value="@_account.Email"
+                                  Icon="@Icons.Material.Filled.Email" />
+
+                    <MudListItem T="string"
+                                 Icon="@Icons.Material.Filled.VerifiedUser">
+
+                        <MudText Typo="Typo.caption"
+                                 Color="Color.Secondary">
+                            Trạng thái tài khoản
+                        </MudText>
+
+                        <div class="mt-1">
+                            <MudChip T="string"
+                                     Size="Size.Small"
+                                     Color="@GetAccountStatusColor()">
+
+                                @GetAccountStatusText()
+
+                            </MudChip>
+                        </div>
+
+                    </MudListItem>
+
+                    <MudListItem T="string"
+                                 Icon="@Icons.Material.Filled.Password">
+
+                        <MudText Typo="Typo.caption"
+                                 Color="Color.Secondary">
+                            Trạng thái mật khẩu
+                        </MudText>
+
+                        <div class="mt-1">
+                            <MudChip T="string"
+                                     Size="Size.Small"
+                                     Color="@(_account.MustChangePassword
+                                         ? Color.Warning
+                                         : Color.Success)">
+
+                                @(_account.MustChangePassword
+                                    ? "Đang yêu cầu đổi mật khẩu"
+                                    : "Mật khẩu đã cập nhật")
+
+                            </MudChip>
+                        </div>
+
+                    </MudListItem>
+
+                    <InfoListItem Label="Ngày tạo tài khoản"
+                                  Value="@DisplayDateTime(_account.CreatedAt)"
+                                  Icon="@Icons.Material.Filled.CalendarMonth" />
+
+                    <InfoListItem Label="Cập nhật gần nhất"
+                                  Value="@DisplayDateTime(_account.UpdatedAt)"
+                                  Icon="@Icons.Material.Filled.Update" />
+
+                </MudList>
+
+            </MudPaper>
+
+        </MudItem>
+
+        @* =====================================================
+           THÔNG TIN CÁ NHÂN
+           ===================================================== *@
+
+        <MudItem xs="12" md="6">
+
+            <MudPaper Outlined="true"
+                      Class="pa-4 h-100">
+
+                <MudStack Row="true"
+                          AlignItems="AlignItems.Center"
+                          Spacing="2"
+                          Class="mb-3">
+
+                    <MudIcon Icon="@Icons.Material.Filled.ContactPage"
+                             Color="Color.Primary" />
+
+                    <MudText Typo="Typo.h6">
+                        Thông tin cá nhân
+                    </MudText>
+
+                </MudStack>
+
+                <MudDivider Class="mb-3" />
+
+                @if (_profile is null)
+                {
+                    <MudAlert Severity="Severity.Info"
+                              Variant="Variant.Outlined">
+
+                        Hồ sơ tài xế chưa được cập nhật.
+
+                    </MudAlert>
+                }
+                else
+                {
+                    <MudList T="string"
+                             Dense="true">
+
+                        <InfoListItem Label="Số CCCD"
+                                      Value="@_profile.CitizenId"
+                                      Icon="@Icons.Material.Filled.CreditCard" />
+
+                        <InfoListItem Label="Ngày sinh"
+                                      Value="@DisplayDate(_profile.DateOfBirth)"
+                                      Icon="@Icons.Material.Filled.Cake" />
+
+                        <InfoListItem Label="Khu vực hoạt động"
+                                      Value="@_profile.AreaCode"
+                                      Icon="@Icons.Material.Filled.LocationOn" />
+
+                        <InfoListItem Label="Địa chỉ"
+                                      Value="@_profile.Address"
+                                      Icon="@Icons.Material.Filled.Home" />
+
+                        <MudListItem T="string"
+                                     Icon="@Icons.Material.Filled.AssignmentInd">
+
+                            <MudText Typo="Typo.caption"
+                                     Color="Color.Secondary">
+                                Trạng thái hồ sơ
+                            </MudText>
+
+                            <div class="mt-1">
+                                <MudChip T="string"
+                                         Size="Size.Small"
+                                         Color="@GetProfileStatusColor()">
+
+                                    @GetProfileStatusText()
+
+                                </MudChip>
+                            </div>
+
+                        </MudListItem>
+
+                        <InfoListItem Label="Ngày tạo hồ sơ"
+                                      Value="@DisplayDateTime(_profile.CreatedAt)"
+                                      Icon="@Icons.Material.Filled.CalendarMonth" />
+
+                        <InfoListItem Label="Cập nhật hồ sơ"
+                                      Value="@DisplayDateTime(_profile.UpdatedAt)"
+                                      Icon="@Icons.Material.Filled.Update" />
+
+                    </MudList>
+                }
+
+            </MudPaper>
+
+        </MudItem>
+
+        @* =====================================================
+           THÔNG TIN PHƯƠNG TIỆN
+           ===================================================== *@
+
+        <MudItem xs="12" md="6">
+
+            <MudPaper Outlined="true"
+                      Class="pa-4 h-100">
+
+                <MudStack Row="true"
+                          AlignItems="AlignItems.Center"
+                          Spacing="2"
+                          Class="mb-3">
+
+                    <MudIcon Icon="@Icons.Material.Filled.DirectionsCar"
+                             Color="Color.Primary" />
+
+                    <MudText Typo="Typo.h6">
+                        Thông tin phương tiện
+                    </MudText>
+
+                </MudStack>
+
+                <MudDivider Class="mb-3" />
+
+                @if (_profile is null)
+                {
+                    <MudAlert Severity="Severity.Info"
+                              Variant="Variant.Outlined">
+
+                        Chưa có thông tin phương tiện.
+
+                    </MudAlert>
+                }
+                else
+                {
+                    <MudList T="string"
+                             Dense="true">
+
+                        <InfoListItem Label="Biển kiểm soát"
+                                      Value="@_profile.VehiclePlate"
+                                      Icon="@Icons.Material.Filled.Pin" />
+
+                        <InfoListItem Label="Số hiệu xe"
+                                      Value="@_profile.VehicleCode"
+                                      Icon="@Icons.Material.Filled.ConfirmationNumber" />
+
+                        <InfoListItem Label="Loại xe"
+                                      Value="@_profile.VehicleType"
+                                      Icon="@Icons.Material.Filled.LocalTaxi" />
+
+                    </MudList>
+                }
+
+            </MudPaper>
+
+        </MudItem>
+
+        @* =====================================================
+           THÔNG TIN GPLX
+           ===================================================== *@
+
+        <MudItem xs="12" md="6">
+
+            <MudPaper Outlined="true"
+                      Class="pa-4 h-100">
+
+                <MudStack Row="true"
+                          AlignItems="AlignItems.Center"
+                          Spacing="2"
+                          Class="mb-3">
+
+                    <MudIcon Icon="@Icons.Material.Filled.Badge"
+                             Color="Color.Primary" />
+
+                    <MudText Typo="Typo.h6">
+                        Giấy phép lái xe
+                    </MudText>
+
+                </MudStack>
+
+                <MudDivider Class="mb-3" />
+
+                @if (_profile is null)
+                {
+                    <MudAlert Severity="Severity.Info"
+                              Variant="Variant.Outlined">
+
+                        Chưa có thông tin giấy phép lái xe.
+
+                    </MudAlert>
+                }
+                else
+                {
+                    <MudList T="string"
+                             Dense="true">
+
+                        <InfoListItem Label="Số GPLX"
+                                      Value="@_profile.DriverLicenseNumber"
+                                      Icon="@Icons.Material.Filled.CreditCard" />
+
+                        <InfoListItem Label="Hạng GPLX"
+                                      Value="@_profile.DriverLicenseClass"
+                                      Icon="@Icons.Material.Filled.Category" />
+
+                        <InfoListItem Label="Ngày cấp"
+                                      Value="@DisplayDate(_profile.DriverLicenseIssuedDate)"
+                                      Icon="@Icons.Material.Filled.EventAvailable" />
+
+                        <MudListItem T="string"
+                                     Icon="@Icons.Material.Filled.EventBusy">
+
+                            <MudText Typo="Typo.caption"
+                                     Color="Color.Secondary">
+                                Ngày hết hạn
+                            </MudText>
+
+                            <MudStack Row="true"
+                                      AlignItems="AlignItems.Center"
+                                      Spacing="2"
+                                      Class="mt-1">
+
+                                <MudText Typo="Typo.body1">
+                                    @DisplayDate(
+                                        _profile.DriverLicenseExpiryDate)
+                                </MudText>
+
+                                @if (_profile.DriverLicenseExpiryDate.HasValue)
+                                {
+                                    <MudChip T="string"
+                                             Size="Size.Small"
+                                             Color="@GetLicenseStatusColor()">
+
+                                        @GetLicenseStatusText()
+
+                                    </MudChip>
+                                }
+
+                            </MudStack>
+
+                        </MudListItem>
+
+                    </MudList>
+                }
+
+            </MudPaper>
+
+        </MudItem>
+
+        @* =====================================================
+           HÌNH ẢNH GIẤY TỜ
+           ===================================================== *@
+
+        @if (_profile is not null && HasDocumentImages())
+        {
+            <MudItem xs="12">
+
+                <MudPaper Outlined="true"
+                          Class="pa-4">
+
+                    <MudStack Row="true"
+                              AlignItems="AlignItems.Center"
+                              Spacing="2"
+                              Class="mb-3">
+
+                        <MudIcon Icon="@Icons.Material.Filled.Image"
+                                 Color="Color.Primary" />
+
+                        <MudText Typo="Typo.h6">
+                            Hình ảnh giấy tờ
+                        </MudText>
+
+                    </MudStack>
+
+                    <MudDivider Class="mb-4" />
+
+                    <MudGrid>
+
+                        @if (!string.IsNullOrWhiteSpace(
+                            _profile.CitizenIdFrontUrl))
+                        {
+                            <DocumentImage Title="CCCD mặt trước"
+                                           ImageUrl="@_profile.CitizenIdFrontUrl" />
+                        }
+
+                        @if (!string.IsNullOrWhiteSpace(
+                            _profile.CitizenIdBackUrl))
+                        {
+                            <DocumentImage Title="CCCD mặt sau"
+                                           ImageUrl="@_profile.CitizenIdBackUrl" />
+                        }
+
+                        @if (!string.IsNullOrWhiteSpace(
+                            _profile.DriverLicenseFrontUrl))
+                        {
+                            <DocumentImage Title="GPLX mặt trước"
+                                           ImageUrl="@_profile.DriverLicenseFrontUrl" />
+                        }
+
+                        @if (!string.IsNullOrWhiteSpace(
+                            _profile.DriverLicenseBackUrl))
+                        {
+                            <DocumentImage Title="GPLX mặt sau"
+                                           ImageUrl="@_profile.DriverLicenseBackUrl" />
+                        }
+
+                    </MudGrid>
+
+                </MudPaper>
+
+            </MudItem>
+        }
+
+    </MudGrid>
+}
+
+@code {
+    private DriverAccountDetailDto? _account;
+    private DriverProfileDto? _profile;
+
+    private bool _loading = true;
+    private string? _errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _errorMessage = null;
+
+        try
+        {
+            var authenticationState =
+                await AuthenticationStateProvider
+                    .GetAuthenticationStateAsync();
+
+            var principal = authenticationState.User;
+
+            if (principal.Identity?.IsAuthenticated != true)
+            {
+                Navigation.NavigateTo(
+                    "/account/login",
+                    forceLoad: true);
+
+                return;
+            }
+
+            var currentUser =
+                await UserManager.GetUserAsync(principal);
+
+            if (currentUser is null)
+            {
+                _errorMessage =
+                    "Không xác định được tài khoản đang đăng nhập.";
+
+                return;
+            }
+
+            /*
+             * Lấy từ bảng ApplicationUser.
+             */
+            _account =
+                await DriverAccountService.GetDetailAsync(
+                    currentUser.Id);
+
+            /*
+             * Lấy từ bảng DriverProfile.
+             */
+            _profile =
+                await DriverProfileService.GetByUserIdAsync(
+                    currentUser.Id);
+
+            if (_account is null)
+            {
+                _errorMessage =
+                    "Không tìm thấy thông tin tài khoản tài xế.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage =
+                $"Không thể tải thông tin cá nhân: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private static string DisplayValue(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value)
+            ? "Chưa cập nhật"
+            : value;
+    }
+
+    private static string DisplayDate(DateTime? value)
+    {
+        return value.HasValue
+            ? value.Value.ToLocalTime().ToString("dd/MM/yyyy")
+            : "Chưa cập nhật";
+    }
+
+    private static string DisplayDateTime(DateTime? value)
+    {
+        return value.HasValue
+            ? value.Value.ToLocalTime()
+                .ToString("dd/MM/yyyy HH:mm")
+            : "Chưa cập nhật";
+    }
+
+    private static string GetInitials(string? fullName)
+    {
+        if (string.IsNullOrWhiteSpace(fullName))
+            return "TX";
+
+        var words = fullName
+            .Split(
+                ' ',
+                StringSplitOptions.RemoveEmptyEntries);
+
+        if (words.Length == 1)
+        {
+            return words[0]
+                .Substring(0, 1)
+                .ToUpperInvariant();
+        }
+
+        return string.Concat(
+                words.First()[0],
+                words.Last()[0])
+            .ToUpperInvariant();
+    }
+
+    private Color GetAccountStatusColor()
+    {
+        return _account?.IsActive == true
+            ? Color.Success
+            : Color.Error;
+    }
+
+    private string GetAccountStatusText()
+    {
+        return _account?.IsActive == true
+            ? "Tài khoản đang hoạt động"
+            : "Tài khoản đã bị khóa";
+    }
+
+    private Color GetProfileStatusColor()
+    {
+        if (_profile is null)
+            return Color.Warning;
+
+        return _profile.IsActive
+            ? Color.Success
+            : Color.Error;
+    }
+
+    private string GetProfileStatusText()
+    {
+        if (_profile is null)
+            return "Hồ sơ chưa cập nhật";
+
+        return _profile.IsActive
+            ? "Hồ sơ đang hoạt động"
+            : "Hồ sơ đã ngừng hoạt động";
+    }
+
+    private Color GetLicenseStatusColor()
+    {
+        if (!_profile?.DriverLicenseExpiryDate.HasValue == true)
+            return Color.Default;
+
+        var expiryDate =
+            _profile!.DriverLicenseExpiryDate!.Value.Date;
+
+        if (expiryDate < DateTime.Today)
+            return Color.Error;
+
+        if (expiryDate <= DateTime.Today.AddDays(30))
+            return Color.Warning;
+
+        return Color.Success;
+    }
+
+    private string GetLicenseStatusText()
+    {
+        if (!_profile?.DriverLicenseExpiryDate.HasValue == true)
+            return string.Empty;
+
+        var expiryDate =
+            _profile!.DriverLicenseExpiryDate!.Value.Date;
+
+        if (expiryDate < DateTime.Today)
+            return "Đã hết hạn";
+
+        if (expiryDate <= DateTime.Today.AddDays(30))
+            return "Sắp hết hạn";
+
+        return "Còn hiệu lực";
+    }
+
+    private bool HasDocumentImages()
+    {
+        if (_profile is null)
+            return false;
+
+        return
+            !string.IsNullOrWhiteSpace(
+                _profile.CitizenIdFrontUrl) ||
+            !string.IsNullOrWhiteSpace(
+                _profile.CitizenIdBackUrl) ||
+            !string.IsNullOrWhiteSpace(
+                _profile.DriverLicenseFrontUrl) ||
+            !string.IsNullOrWhiteSpace(
+                _profile.DriverLicenseBackUrl);
+    }
+}

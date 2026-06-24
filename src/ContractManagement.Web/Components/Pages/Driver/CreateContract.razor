@@ -1,0 +1,300 @@
+@page "/driver/contracts/create"
+@attribute [Authorize(Roles = "Driver")]
+<PageTitle>Tạo hợp đồng</PageTitle>
+<PageHeader Title="Tạo hợp đồng mới" Subtitle="Nhập thông tin, kiểm tra và chuyển điện thoại cho khách ký." />
+<MudPaper Outlined="true" Class="pa-4">
+    <MudPaper Outlined="true"
+              Class="pa-4">
+
+        <MudStack Row="true"
+                  AlignItems="AlignItems.Center"
+                  Spacing="2"
+                  Class="mb-4">
+
+            @for (var i = 0; i < _steps.Length; i++)
+            {
+                var stepIndex = i;
+
+                <MudAvatar Color="@(stepIndex == _currentStep
+                                                           ? Color.Primary
+                                                           : Color.Default)"
+                       Size="Size.Small">
+
+                    @(stepIndex + 1)
+
+                </MudAvatar>
+
+            @if (i < _steps.Length - 1)
+                {
+                    <MudDivider FlexItem="true" />
+                }
+            }
+
+        </MudStack>
+
+        <MudText Typo="Typo.h6"
+                 Class="mb-4">
+
+            @_steps[_currentStep]
+
+        </MudText>
+
+        @switch (_currentStep)
+        {
+            case 0:
+                <MudSelect T="Guid?"
+                           Label="Loại hợp đồng"
+                           @bind-Value="_model.ContractTypeId"
+                           Variant="Variant.Outlined"
+                           Required="true"
+                           FullWidth="true">
+
+                    @foreach (var item in _contractTypes)
+                    {
+                        <MudSelectItem T="Guid?"
+                                       Value="@((Guid?)item.Id)">
+                            @item.Name
+                        </MudSelectItem>
+                    }
+
+                </MudSelect>
+                break;
+
+            case 1:
+                <MudGrid>
+                    <MudItem xs="12">
+                        <MudTextField T="string"
+                                      Label="Họ tên khách hàng"
+                                      @bind-Value="_model.CustomerName"
+                                      Variant="Variant.Outlined"
+                                      Required="true"
+                                      FullWidth="true" />
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6">
+                        <MudTextField T="string"
+                                      Label="Số điện thoại"
+                                      @bind-Value="_model.CustomerPhone"
+                                      Variant="Variant.Outlined"
+                                      Required="true"
+                                      FullWidth="true" />
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6">
+                        <MudTextField T="string"
+                                      Label="Số CCCD"
+                                      @bind-Value="_model.CustomerCitizenId"
+                                      Variant="Variant.Outlined"
+                                      FullWidth="true" />
+                    </MudItem>
+
+                    <MudItem xs="12">
+                        <MudTextField T="string"
+                                      Label="Địa chỉ"
+                                      @bind-Value="_model.CustomerAddress"
+                                      Variant="Variant.Outlined"
+                                      Lines="2"
+                                      FullWidth="true" />
+                    </MudItem>
+                </MudGrid>
+                break;
+
+            case 2:
+                <MudGrid>
+                    <MudItem xs="12">
+                        <MudTextField T="string"
+                                      Label="Điểm đón"
+                                      @bind-Value="_model.PickupLocation"
+                                      Variant="Variant.Outlined"
+                                      FullWidth="true" />
+                    </MudItem>
+
+                    <MudItem xs="12">
+                        <MudTextField T="string"
+                                      Label="Điểm đến"
+                                      @bind-Value="_model.DropoffLocation"
+                                      Variant="Variant.Outlined"
+                                      FullWidth="true" />
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6">
+                        <MudDatePicker Label="Ngày bắt đầu"
+                                       @bind-Date="_model.StartDate"
+                                       Variant="Variant.Outlined" />
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6">
+                        <MudNumericField T="decimal?"
+                                         Label="Giá trị hợp đồng"
+                                         @bind-Value="_model.ContractValue"
+                                         Variant="Variant.Outlined"
+                                         Format="N0"
+                                         FullWidth="true" />
+                    </MudItem>
+                </MudGrid>
+                break;
+
+            case 3:
+                <MudTextField T="string"
+                              Label="Nội dung hợp đồng"
+                              @bind-Value="_model.ContractContent"
+                              Variant="Variant.Outlined"
+                              Lines="12"
+                              FullWidth="true" />
+                break;
+
+            case 4:
+                <MudPaper Outlined="true"
+                          Class="pa-4">
+
+                    <MudText Typo="Typo.h6"
+                             Class="mb-3">
+                        Kiểm tra thông tin
+                    </MudText>
+
+                    <MudList T="string">
+                        <MudListItem T="string">
+                            Loại hợp đồng:
+                            @_contractTypes.FirstOrDefault(x =>
+                            x.Id == _model.ContractTypeId)?.Name
+                </MudListItem>
+
+                        <MudListItem T="string">
+                            Khách hàng: @_model.CustomerName
+                        </MudListItem>
+
+                        <MudListItem T="string">
+                            Số điện thoại: @_model.CustomerPhone
+                        </MudListItem>
+
+                        <MudListItem T="string">
+                            Điểm đón: @_model.PickupLocation
+                        </MudListItem>
+
+                        <MudListItem T="string">
+                            Điểm đến: @_model.DropoffLocation
+                        </MudListItem>
+
+                        <MudListItem T="string">
+                            Giá trị:
+                            @_model.ContractValue?.ToString("N0") đ
+                        </MudListItem>
+                    </MudList>
+
+                </MudPaper>
+                break;
+        }
+
+        <MudStack Row="true"
+                  Justify="Justify.SpaceBetween"
+                  Class="mt-5">
+
+            <MudButton Disabled="@(_currentStep == 0)"
+                       Variant="Variant.Outlined"
+                       OnClick="PreviousStep">
+
+                Quay lại
+
+            </MudButton>
+
+            @if (_currentStep < _steps.Length - 1)
+            {
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           OnClick="NextStep">
+
+                    Tiếp tục
+
+                </MudButton>
+            }
+            else
+            {
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Success"
+                           OnClick="SaveContractAsync">
+
+                    Lưu hợp đồng
+
+                </MudButton>
+            }
+
+        </MudStack>
+
+    </MudPaper>
+</MudPaper>
+
+@code {
+    private int _currentStep;
+
+    private readonly ContractFormModel _model = new();
+
+    private readonly List<ContractTypeOption> _contractTypes =
+    [
+        new()
+        {
+            Id = Guid.NewGuid(),
+            Name = "Hợp đồng vận chuyển"
+        },
+        new()
+        {
+            Id = Guid.NewGuid(),
+            Name = "Hợp đồng thuê xe"
+        }
+    ];
+
+    private readonly string[] _steps =
+    [
+        "Loại hợp đồng",
+        "Thông tin khách hàng",
+        "Thông tin chuyến đi",
+        "Nội dung hợp đồng",
+        "Kiểm tra và xác nhận"
+    ];
+
+    private void NextStep()
+    {
+        if (_currentStep < _steps.Length - 1)
+            _currentStep++;
+    }
+
+    private void PreviousStep()
+    {
+        if (_currentStep > 0)
+            _currentStep--;
+    }
+
+    private Task SaveContractAsync()
+    {
+        return Task.CompletedTask;
+    }
+
+    private sealed class ContractFormModel
+    {
+        public Guid? ContractTypeId { get; set; }
+
+        public string CustomerName { get; set; } = string.Empty;
+
+        public string CustomerPhone { get; set; } = string.Empty;
+
+        public string CustomerCitizenId { get; set; } = string.Empty;
+
+        public string CustomerAddress { get; set; } = string.Empty;
+
+        public string PickupLocation { get; set; } = string.Empty;
+
+        public string DropoffLocation { get; set; } = string.Empty;
+
+        public DateTime? StartDate { get; set; }
+
+        public decimal? ContractValue { get; set; }
+
+        public string ContractContent { get; set; } = string.Empty;
+    }
+
+    private sealed class ContractTypeOption
+    {
+        public Guid Id { get; set; }
+
+        public string Name { get; set; } = string.Empty;
+    }
+}

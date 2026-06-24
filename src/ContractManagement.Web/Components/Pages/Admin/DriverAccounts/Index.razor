@@ -1,0 +1,425 @@
+﻿@page "/admin/driver-accounts"
+@attribute [Authorize(Roles = "Admin")]
+@inject IDriverAccountService DriverAccountService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<PageTitle>Tài khoản tài xế</PageTitle>
+
+<PageHeader Title="Tài khoản tài xế"
+            Subtitle="Quản lý đăng nhập, trạng thái và mật khẩu tài xế.">
+
+    <MudButton Variant="Variant.Filled"
+               Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Add"
+               OnClick="CreateAccount">
+
+        Thêm tài khoản
+
+    </MudButton>
+
+</PageHeader>
+
+<MudPaper Outlined="true"
+          Class="pa-4 mb-4">
+
+    <MudGrid>
+        <MudItem xs="12" md="6">
+            <MudTextField T="string"
+                          Label="Tìm kiếm"
+                          Placeholder="Tên, tài khoản, mã nhân viên, số điện thoại"
+                          @bind-Value="_filter.Keyword"
+                          Variant="Variant.Outlined"
+                          Immediate="true"
+                          Clearable="true"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search" />
+        </MudItem>
+
+        <MudItem xs="12" md="3">
+            <MudSelect T="bool?"
+                       Label="Trạng thái"
+                       @bind-Value="_filter.IsActive"
+                       Variant="Variant.Outlined"
+                       Clearable="true">
+
+                <MudSelectItem T="bool?" Value="@((bool?)true)">
+                    Đang hoạt động
+                </MudSelectItem>
+
+                <MudSelectItem T="bool?" Value="@((bool?)false)">
+                    Đã khóa
+                </MudSelectItem>
+
+            </MudSelect>
+        </MudItem>
+
+        <MudItem xs="12" md="3"
+                 Class="d-flex align-center">
+
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       FullWidth="true"
+                       StartIcon="@Icons.Material.Filled.FilterAlt"
+                       OnClick="LoadAsync">
+
+                Lọc dữ liệu
+
+            </MudButton>
+        </MudItem>
+    </MudGrid>
+
+</MudPaper>
+
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate="true"
+                       Color="Color.Primary" />
+}
+else if (_items.Count == 0)
+{
+    <MudAlert Severity="Severity.Info"
+              Variant="Variant.Outlined">
+
+        Chưa có tài khoản tài xế.
+
+    </MudAlert>
+}
+else
+{
+    <MudHidden Breakpoint="Breakpoint.SmAndDown">
+
+        <MudTable Items="_items"
+                  Hover="true"
+                  Striped="true"
+                  Breakpoint="Breakpoint.Sm"
+                  Elevation="0"
+                  Bordered="true">
+
+            <HeaderContent>
+                <MudTh>Tài khoản</MudTh>
+                <MudTh>Họ tên</MudTh>
+                <MudTh>Mã NV</MudTh>
+                <MudTh>Số điện thoại</MudTh>
+                <MudTh>Hồ sơ</MudTh>
+                <MudTh>Trạng thái</MudTh>
+                <MudTh Style="width:180px">Thao tác</MudTh>
+            </HeaderContent>
+
+            <RowTemplate>
+                <MudTd DataLabel="Tài khoản">
+                    @context.UserName
+                </MudTd>
+
+                <MudTd DataLabel="Họ tên">
+                    @context.FullName
+                </MudTd>
+
+                <MudTd DataLabel="Mã NV">
+                    @context.EmployeeCode
+                </MudTd>
+
+                <MudTd DataLabel="Số điện thoại">
+                    @context.PhoneNumber
+                </MudTd>
+
+                <MudTd DataLabel="Hồ sơ">
+                    <MudChip T="string"
+                             Size="Size.Small"
+                             Color="@(context.HasDriverProfile
+                                      ? Color.Success
+                                      : Color.Warning)">
+
+                        @(context.HasDriverProfile
+                            ? "Đã có"
+                            : "Chưa có")
+
+                    </MudChip>
+                </MudTd>
+
+                <MudTd DataLabel="Trạng thái">
+                    <MudChip T="string"
+                             Size="Size.Small"
+                             Color="@(context.IsActive
+                                      ? Color.Success
+                                      : Color.Error)">
+
+                        @(context.IsActive
+                            ? "Hoạt động"
+                            : "Đã khóa")
+
+                    </MudChip>
+                </MudTd>
+
+                <MudTd>
+                    <MudMenu Dense="true"
+                             Icon="@Icons.Material.Filled.MoreVert">
+
+                        <MudMenuItem Icon="@Icons.Material.Filled.Visibility"
+                                     OnClick="@(() => OpenDetail(context.Id))">
+                            Chi tiết
+                        </MudMenuItem>
+
+
+                        <MudMenuItem Icon="@Icons.Material.Filled.Password"
+                                     OnClick="@(() => ResetPasswordAsync(context))">
+                            Reset mật khẩu
+                        </MudMenuItem>
+
+                        <MudMenuItem Icon="@(context.IsActive
+                                             ? Icons.Material.Filled.Lock
+                                             : Icons.Material.Filled.LockOpen)"
+                                     OnClick="@(() => ToggleActiveAsync(context))">
+
+                            @(context.IsActive
+                                ? "Khóa tài khoản"
+                                : "Mở tài khoản")
+
+                        </MudMenuItem>
+
+                        <MudMenuItem Icon="@Icons.Material.Filled.Delete"
+                                     OnClick="@(() => DeleteAsync(context))">
+                            Xóa
+                        </MudMenuItem>
+
+                    </MudMenu>
+                </MudTd>
+            </RowTemplate>
+
+        </MudTable>
+
+    </MudHidden>
+
+    <MudHidden Breakpoint="Breakpoint.MdAndUp">
+
+        @foreach (var item in _items)
+        {
+            <MudPaper Outlined="true"
+                      Class="pa-4 mb-3">
+
+                <MudStack Row="true"
+                          Justify="Justify.SpaceBetween"
+                          AlignItems="AlignItems.Start">
+
+                    <div>
+                        <MudText Typo="Typo.subtitle1"
+                                 Style="font-weight:700">
+                            @item.FullName
+                        </MudText>
+
+                        <MudText Typo="Typo.body2"
+                                 Color="Color.Secondary">
+                            @item.UserName
+                        </MudText>
+                    </div>
+
+                    <MudChip T="string"
+                             Size="Size.Small"
+                             Color="@(item.IsActive
+                                      ? Color.Success
+                                      : Color.Error)">
+
+                        @(item.IsActive
+                            ? "Hoạt động"
+                            : "Đã khóa")
+
+                    </MudChip>
+
+                </MudStack>
+
+                <MudDivider Class="my-3" />
+
+                <MudText Typo="Typo.body2">
+                    Mã nhân viên: @item.EmployeeCode
+                </MudText>
+
+                <MudText Typo="Typo.body2">
+                    Điện thoại: @item.PhoneNumber
+                </MudText>
+
+                <MudText Typo="Typo.body2">
+                    Hồ sơ:
+                    @(item.HasDriverProfile
+                        ? "Đã tạo"
+                        : "Chưa tạo")
+                </MudText>
+
+                <MudStack Row="true"
+                          Spacing="2"
+                          Class="mt-3">
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Visibility"
+                               OnClick="@(() => OpenDetail(item.Id))">
+
+                        Chi tiết
+
+                    </MudButton>
+
+                    <MudButton Variant="Variant.Outlined"
+                               Color="@(item.IsActive
+                                        ? Color.Error
+                                        : Color.Success)"
+                               OnClick="@(() => ToggleActiveAsync(item))">
+
+                        @(item.IsActive ? "Khóa" : "Mở")
+
+                    </MudButton>
+
+                </MudStack>
+
+            </MudPaper>
+        }
+
+    </MudHidden>
+}
+
+@code {
+    private bool _loading;
+
+    private List<DriverAccountDto> _items = [];
+
+    private DriverAccountFilter _filter = new()
+    {
+        Page = 1,
+        PageSize = 100
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            _loading = true;
+
+            _items = (await DriverAccountService
+                    .GetListAsync(_filter))
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(
+                ex.Message,
+                Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void CreateAccount()
+    {
+        Navigation.NavigateTo(
+            "/admin/driver-accounts/create");
+    }
+
+    private async Task ToggleActiveAsync(
+        DriverAccountDto item)
+    {
+        var action =
+            item.IsActive ? "khóa" : "mở";
+
+        var confirmed = await DialogService.ShowMessageBoxAsync(
+            "Xác nhận",
+            $"Bạn có chắc muốn {action} tài khoản {item.UserName}?",
+            yesText: "Đồng ý",
+            cancelText: "Hủy");
+
+        if (confirmed != true)
+            return;
+
+        try
+        {
+            await DriverAccountService.SetActiveAsync(
+                item.Id,
+                !item.IsActive);
+
+            Snackbar.Add(
+                $"Đã {action} tài khoản.",
+                Severity.Success);
+
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(
+                ex.Message,
+                Severity.Error);
+        }
+    }
+
+    private async Task ResetPasswordAsync(
+        DriverAccountDto item)
+    {
+        const string defaultPassword =
+            "Driver@123456";
+
+        var confirmed = await DialogService.ShowMessageBoxAsync(
+            "Reset mật khẩu",
+            $"Mật khẩu mới sẽ là {defaultPassword}. Tiếp tục?",
+            yesText: "Reset",
+            cancelText: "Hủy");
+
+        if (confirmed != true)
+            return;
+
+        try
+        {
+            await DriverAccountService.ResetPasswordAsync(
+                item.Id,
+                defaultPassword);
+
+            Snackbar.Add(
+                "Reset mật khẩu thành công.",
+                Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(
+                ex.Message,
+                Severity.Error);
+        }
+    }
+
+    private async Task DeleteAsync(
+        DriverAccountDto item)
+    {
+        var confirmed = await DialogService.ShowMessageBoxAsync(
+            "Xóa tài khoản",
+            $"Bạn có chắc muốn xóa tài khoản {item.UserName}?",
+            yesText: "Xóa",
+            cancelText: "Hủy");
+
+        if (confirmed != true)
+            return;
+
+        try
+        {
+            await DriverAccountService.DeleteAsync(item.Id);
+
+            Snackbar.Add(
+                "Đã xử lý xóa tài khoản.",
+                Severity.Success);
+
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(
+                ex.Message,
+                Severity.Error);
+        }
+    }
+
+    private void OpenDetail(string userId)
+    {
+        Navigation.NavigateTo(
+            $"/admin/driver-accounts/{userId}");
+    }
+}
