@@ -1,4 +1,3 @@
-﻿
 namespace ContractManagement.Infrastructure.Identity;
 
 using global::ContractManagement.Infrastructure.Persistence;
@@ -9,12 +8,12 @@ using System.Security.Claims;
 public sealed class PasswordChangedHandler
     : AuthorizationHandler<PasswordChangedRequirement>
 {
-    private readonly ApplicationDbContext _dbContext;
+    private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
 
     public PasswordChangedHandler(
-        ApplicationDbContext dbContext)
+        IDbContextFactory<ApplicationDbContext> dbContextFactory)
     {
-        _dbContext = dbContext;
+        _dbContextFactory = dbContextFactory;
     }
 
     protected override async Task HandleRequirementAsync(
@@ -30,7 +29,10 @@ public sealed class PasswordChangedHandler
         if (string.IsNullOrWhiteSpace(userId))
             return;
 
-        var user = await _dbContext.Users
+        await using var dbContext =
+            await _dbContextFactory.CreateDbContextAsync();
+
+        var user = await dbContext.Users
             .AsNoTracking()
             .Where(x => x.Id == userId)
             .Select(x => new
@@ -40,13 +42,7 @@ public sealed class PasswordChangedHandler
             })
             .FirstOrDefaultAsync();
 
-        if (user is null)
-            return;
-
-        if (!user.IsActive)
-            return;
-
-        if (user.MustChangePassword)
+        if (user is null || !user.IsActive || user.MustChangePassword)
             return;
 
         context.Succeed(requirement);

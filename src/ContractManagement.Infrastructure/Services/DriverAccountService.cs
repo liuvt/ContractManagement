@@ -1,4 +1,4 @@
-﻿using ContractManagement.Application.Abstractions;
+using ContractManagement.Application.Abstractions;
 using ContractManagement.Application.Admins.DriverAccounts;
 using ContractManagement.Application.Admins.DriverProfiles;
 using ContractManagement.Domain.Identity;
@@ -11,20 +11,22 @@ namespace ContractManagement.Infrastructure.Services;
 public sealed class DriverAccountService : IDriverAccountService
 {
     private readonly UserManager<ApplicationUser> _userManager;
-    private readonly ApplicationDbContext _dbContext;
+    private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
 
     public DriverAccountService(
         UserManager<ApplicationUser> userManager,
-        ApplicationDbContext dbContext)
+        IDbContextFactory<ApplicationDbContext> dbContextFactory)
     {
         _userManager = userManager;
-        _dbContext = dbContext;
+        _dbContextFactory = dbContextFactory;
     }
 
     public async Task<string> CreateAsync(
         CreateDriverAccountRequest request,
         CancellationToken cancellationToken = default)
     {
+        await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+
         var userName = request.UserName.Trim();
 
         if (string.IsNullOrWhiteSpace(userName))
@@ -45,7 +47,7 @@ public sealed class DriverAccountService : IDriverAccountService
         if (!string.IsNullOrWhiteSpace(request.EmployeeCode))
         {
             var employeeCodeExists =
-                await _dbContext.Users.AnyAsync(
+                await dbContext.Users.AnyAsync(
                     x => x.EmployeeCode == request.EmployeeCode,
                     cancellationToken);
 
@@ -59,7 +61,7 @@ public sealed class DriverAccountService : IDriverAccountService
         if (!string.IsNullOrWhiteSpace(request.PhoneNumber))
         {
             var phoneExists =
-                await _dbContext.Users.AnyAsync(
+                await dbContext.Users.AnyAsync(
                     x => x.PhoneNumber == request.PhoneNumber,
                     cancellationToken);
 
@@ -123,6 +125,8 @@ public sealed class DriverAccountService : IDriverAccountService
         UpdateDriverAccountRequest request,
         CancellationToken cancellationToken = default)
     {
+        await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+
         var user =
             await _userManager.FindByIdAsync(userId)
             ?? throw new KeyNotFoundException(
@@ -131,7 +135,7 @@ public sealed class DriverAccountService : IDriverAccountService
         if (!string.IsNullOrWhiteSpace(request.EmployeeCode))
         {
             var employeeCodeExists =
-                await _dbContext.Users.AnyAsync(
+                await dbContext.Users.AnyAsync(
                     x =>
                         x.Id != userId &&
                         x.EmployeeCode == request.EmployeeCode,
@@ -147,7 +151,7 @@ public sealed class DriverAccountService : IDriverAccountService
         if (!string.IsNullOrWhiteSpace(request.PhoneNumber))
         {
             var phoneExists =
-                await _dbContext.Users.AnyAsync(
+                await dbContext.Users.AnyAsync(
                     x =>
                         x.Id != userId &&
                         x.PhoneNumber == request.PhoneNumber,
@@ -187,20 +191,21 @@ public sealed class DriverAccountService : IDriverAccountService
     bool isActive,
     CancellationToken cancellationToken = default)
     {
+        await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
         await using var transaction =
-            await _dbContext.Database.BeginTransactionAsync(
+            await dbContext.Database.BeginTransactionAsync(
                 cancellationToken);
 
         try
         {
-            var user = await _dbContext.Users
+            var user = await dbContext.Users
                 .FirstOrDefaultAsync(
                     x => x.Id == userId,
                     cancellationToken)
                 ?? throw new KeyNotFoundException(
                     "Không tìm thấy tài khoản tài xế.");
 
-            var profile = await _dbContext.DriverProfiles
+            var profile = await dbContext.DriverProfiles
                 .IgnoreQueryFilters()
                 .FirstOrDefaultAsync(
                     x => x.UserId == userId,
@@ -232,7 +237,7 @@ public sealed class DriverAccountService : IDriverAccountService
                 }
             }
 
-            await _dbContext.SaveChangesAsync(
+            await dbContext.SaveChangesAsync(
                 cancellationToken);
 
             await transaction.CommitAsync(
@@ -299,34 +304,35 @@ public sealed class DriverAccountService : IDriverAccountService
     string userId,
     CancellationToken cancellationToken = default)
     {
+        await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
         await using var transaction =
-            await _dbContext.Database.BeginTransactionAsync(
+            await dbContext.Database.BeginTransactionAsync(
                 cancellationToken);
 
         try
         {
-            var user = await _dbContext.Users
+            var user = await dbContext.Users
                 .FirstOrDefaultAsync(
                     x => x.Id == userId,
                     cancellationToken)
                 ?? throw new KeyNotFoundException(
                     "Không tìm thấy tài khoản tài xế.");
 
-            var profile = await _dbContext.DriverProfiles
+            var profile = await dbContext.DriverProfiles
                 .IgnoreQueryFilters()
                 .FirstOrDefaultAsync(
                     x => x.UserId == userId,
                     cancellationToken);
 
             var hasContracts =
-                await _dbContext.Contracts
+                await dbContext.Contracts
                     .IgnoreQueryFilters()
                     .AnyAsync(
                         x => x.DriverId == userId,
                         cancellationToken);
 
             var hasSignatures =
-                await _dbContext.DriverSignatures
+                await dbContext.DriverSignatures
                     .IgnoreQueryFilters()
                     .AnyAsync(
                         x => x.DriverId == userId,
@@ -348,7 +354,7 @@ public sealed class DriverAccountService : IDriverAccountService
                     profile.UpdatedAt = DateTime.UtcNow;
                 }
 
-                await _dbContext.SaveChangesAsync(
+                await dbContext.SaveChangesAsync(
                     cancellationToken);
 
                 await transaction.CommitAsync(
@@ -360,9 +366,9 @@ public sealed class DriverAccountService : IDriverAccountService
             // Chưa phát sinh dữ liệu: xóa profile trước.
             if (profile is not null)
             {
-                _dbContext.DriverProfiles.Remove(profile);
+                dbContext.DriverProfiles.Remove(profile);
 
-                await _dbContext.SaveChangesAsync(
+                await dbContext.SaveChangesAsync(
                     cancellationToken);
             }
 
@@ -394,7 +400,9 @@ public sealed class DriverAccountService : IDriverAccountService
         string userId,
         CancellationToken cancellationToken = default)
     {
-        return await _dbContext.Users
+        await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+
+        return await dbContext.Users
             .AsNoTracking()
             .Where(x => x.Id == userId)
             .Select(x => new DriverAccountDto
@@ -408,7 +416,7 @@ public sealed class DriverAccountService : IDriverAccountService
                 IsActive = x.IsActive,
                 MustChangePassword = x.MustChangePassword,
                 HasDriverProfile =
-                    _dbContext.DriverProfiles.Any(
+                    dbContext.DriverProfiles.Any(
                         profile => profile.UserId == x.Id),
                 CreatedAt = x.CreatedAt,
                 UpdatedAt = x.UpdatedAt
@@ -421,6 +429,8 @@ public sealed class DriverAccountService : IDriverAccountService
             DriverAccountFilter filter,
             CancellationToken cancellationToken = default)
     {
+        await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+
         var page = Math.Max(filter.Page, 1);
 
         var pageSize = Math.Clamp(
@@ -429,15 +439,15 @@ public sealed class DriverAccountService : IDriverAccountService
             100);
 
         var driverUserIds =
-            _dbContext.UserRoles
+            dbContext.UserRoles
                 .Where(userRole =>
-                    _dbContext.Roles.Any(role =>
+                    dbContext.Roles.Any(role =>
                         role.Id == userRole.RoleId &&
                         role.Name == "Driver"))
                 .Select(x => x.UserId);
 
         var query =
-            _dbContext.Users
+            dbContext.Users
                 .AsNoTracking()
                 .Where(x => driverUserIds.Contains(x.Id));
 
@@ -476,7 +486,7 @@ public sealed class DriverAccountService : IDriverAccountService
                 IsActive = x.IsActive,
                 MustChangePassword = x.MustChangePassword,
                 HasDriverProfile =
-                    _dbContext.DriverProfiles.Any(
+                    dbContext.DriverProfiles.Any(
                         profile => profile.UserId == x.Id),
                 CreatedAt = x.CreatedAt,
                 UpdatedAt = x.UpdatedAt
@@ -488,7 +498,9 @@ public sealed class DriverAccountService : IDriverAccountService
     string userId,
     CancellationToken cancellationToken = default)
     {
-        var account = await _dbContext.Users
+        await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+
+        var account = await dbContext.Users
             .AsNoTracking()
             .Where(x => x.Id == userId)
             .Select(x => new DriverAccountDetailDto
@@ -509,7 +521,7 @@ public sealed class DriverAccountService : IDriverAccountService
         if (account is null)
             return null;
 
-        account.Profile = await _dbContext.DriverProfiles
+        account.Profile = await dbContext.DriverProfiles
             .AsNoTracking()
             .Where(x => x.UserId == userId)
             .Select(x => new DriverProfileDto

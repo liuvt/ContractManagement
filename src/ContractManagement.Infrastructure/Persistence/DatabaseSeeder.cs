@@ -10,7 +10,8 @@ public static class DatabaseSeeder
     public static async Task SeedAsync(IServiceProvider services)
     {
         using var scope=services.CreateScope();
-        var db=scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var dbFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+        await using var db = await dbFactory.CreateDbContextAsync();
         await db.Database.MigrateAsync();
         var roleManager=scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
         var userManager=scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();

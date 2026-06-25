@@ -1,4 +1,4 @@
-﻿using ContractManagement.Application.Abstractions;
+using ContractManagement.Application.Abstractions;
 using ContractManagement.Application.Admins.DriverProfiles;
 using ContractManagement.Domain.Drivers;
 using ContractManagement.Infrastructure.Persistence;
@@ -8,20 +8,22 @@ namespace ContractManagement.Infrastructure.Services;
 
 public sealed class DriverProfileService : IDriverProfileService
 {
-    private readonly ApplicationDbContext _dbContext;
+    private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
 
     public DriverProfileService(
-        ApplicationDbContext dbContext)
+        IDbContextFactory<ApplicationDbContext> dbContextFactory)
     {
-        _dbContext = dbContext;
+        _dbContextFactory = dbContextFactory;
     }
 
     public async Task<Guid> CreateAsync(
         CreateDriverProfileRequest request,
         CancellationToken cancellationToken = default)
     {
+        await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+
         var userExists =
-            await _dbContext.Users.AnyAsync(
+            await dbContext.Users.AnyAsync(
                 x => x.Id == request.UserId,
                 cancellationToken);
 
@@ -32,7 +34,7 @@ public sealed class DriverProfileService : IDriverProfileService
         }
 
         var profileExists =
-            await _dbContext.DriverProfiles.AnyAsync(
+            await dbContext.DriverProfiles.AnyAsync(
                 x => x.UserId == request.UserId,
                 cancellationToken);
 
@@ -43,6 +45,7 @@ public sealed class DriverProfileService : IDriverProfileService
         }
 
         await ValidateUniqueDataAsync(
+            dbContext,
             null,
             request.CitizenId,
             request.VehiclePlate,
@@ -80,9 +83,9 @@ public sealed class DriverProfileService : IDriverProfileService
             CreatedAt = DateTime.UtcNow
         };
 
-        _dbContext.DriverProfiles.Add(profile);
+        dbContext.DriverProfiles.Add(profile);
 
-        await _dbContext.SaveChangesAsync(
+        await dbContext.SaveChangesAsync(
             cancellationToken);
 
         return profile.Id;
@@ -93,8 +96,10 @@ public sealed class DriverProfileService : IDriverProfileService
         UpdateDriverProfileRequest request,
         CancellationToken cancellationToken = default)
     {
+        await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+
         var profile =
-            await _dbContext.DriverProfiles
+            await dbContext.DriverProfiles
                 .FirstOrDefaultAsync(
                     x => x.Id == id,
                     cancellationToken)
@@ -102,6 +107,7 @@ public sealed class DriverProfileService : IDriverProfileService
                 "Không tìm thấy hồ sơ tài xế.");
 
         await ValidateUniqueDataAsync(
+            dbContext,
             id,
             request.CitizenId,
             request.VehiclePlate,
@@ -137,7 +143,7 @@ public sealed class DriverProfileService : IDriverProfileService
         profile.IsActive = request.IsActive;
         profile.UpdatedAt = DateTime.UtcNow;
 
-        await _dbContext.SaveChangesAsync(
+        await dbContext.SaveChangesAsync(
             cancellationToken);
     }
 
@@ -145,8 +151,10 @@ public sealed class DriverProfileService : IDriverProfileService
         Guid id,
         CancellationToken cancellationToken = default)
     {
+        await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+
         var profile =
-            await _dbContext.DriverProfiles
+            await dbContext.DriverProfiles
                 .FirstOrDefaultAsync(
                     x => x.Id == id,
                     cancellationToken)
@@ -154,7 +162,7 @@ public sealed class DriverProfileService : IDriverProfileService
                 "Không tìm thấy hồ sơ tài xế.");
 
         var hasContracts =
-            await _dbContext.Contracts.AnyAsync(
+            await dbContext.Contracts.AnyAsync(
                 x => x.DriverId == profile.UserId,
                 cancellationToken);
 
@@ -165,7 +173,7 @@ public sealed class DriverProfileService : IDriverProfileService
         profile.UpdatedAt = DateTime.UtcNow;
 
         var user =
-            await _dbContext.Users.FirstOrDefaultAsync(
+            await dbContext.Users.FirstOrDefaultAsync(
                 x => x.Id == profile.UserId,
                 cancellationToken);
 
@@ -181,7 +189,7 @@ public sealed class DriverProfileService : IDriverProfileService
             }
         }
 
-        await _dbContext.SaveChangesAsync(
+        await dbContext.SaveChangesAsync(
             cancellationToken);
     }
 
@@ -189,7 +197,9 @@ public sealed class DriverProfileService : IDriverProfileService
         Guid id,
         CancellationToken cancellationToken = default)
     {
-        return await BuildQuery()
+        await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+
+        return await BuildQuery(dbContext)
             .FirstOrDefaultAsync(
                 x => x.Id == id,
                 cancellationToken);
@@ -199,7 +209,9 @@ public sealed class DriverProfileService : IDriverProfileService
         string userId,
         CancellationToken cancellationToken = default)
     {
-        return await BuildQuery()
+        await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+
+        return await BuildQuery(dbContext)
             .FirstOrDefaultAsync(
                 x => x.UserId == userId,
                 cancellationToken);
@@ -210,6 +222,8 @@ public sealed class DriverProfileService : IDriverProfileService
             DriverProfileFilter filter,
             CancellationToken cancellationToken = default)
     {
+        await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+
         var page = Math.Max(filter.Page, 1);
 
         var pageSize = Math.Clamp(
@@ -217,7 +231,7 @@ public sealed class DriverProfileService : IDriverProfileService
             1,
             100);
 
-        var query = BuildQuery();
+        var query = BuildQuery(dbContext);
 
         if (!string.IsNullOrWhiteSpace(filter.Keyword))
         {
@@ -249,9 +263,9 @@ public sealed class DriverProfileService : IDriverProfileService
             .ToListAsync(cancellationToken);
     }
 
-    private IQueryable<DriverProfileDto> BuildQuery()
+    private static IQueryable<DriverProfileDto> BuildQuery(ApplicationDbContext dbContext)
     {
-        return _dbContext.DriverProfiles
+        return dbContext.DriverProfiles
             .AsNoTracking()
             .Select(x => new DriverProfileDto
             {
@@ -287,14 +301,15 @@ public sealed class DriverProfileService : IDriverProfileService
             });
     }
 
-    private async Task ValidateUniqueDataAsync(
+    private static async Task ValidateUniqueDataAsync(
+        ApplicationDbContext dbContext,
         Guid? currentId,
         string? citizenId,
         string? vehiclePlate,
         CancellationToken cancellationToken)
     {
         var driverCodeExists =
-            await _dbContext.DriverProfiles.AnyAsync(
+            await dbContext.DriverProfiles.AnyAsync(
                 x =>
                     (!currentId.HasValue ||
                      x.Id != currentId.Value),
@@ -306,7 +321,7 @@ public sealed class DriverProfileService : IDriverProfileService
                 citizenId.Trim();
 
             var citizenIdExists =
-                await _dbContext.DriverProfiles.AnyAsync(
+                await dbContext.DriverProfiles.AnyAsync(
                     x =>
                         (!currentId.HasValue ||
                          x.Id != currentId.Value) &&
@@ -327,7 +342,7 @@ public sealed class DriverProfileService : IDriverProfileService
                 normalizedVehiclePlate))
         {
             var vehiclePlateExists =
-                await _dbContext.DriverProfiles.AnyAsync(
+                await dbContext.DriverProfiles.AnyAsync(
                     x =>
                         (!currentId.HasValue ||
                          x.Id != currentId.Value) &&
@@ -348,14 +363,16 @@ public sealed class DriverProfileService : IDriverProfileService
     UpdateDriverProfileRequest request,
     CancellationToken cancellationToken = default)
     {
-        var user = await _dbContext.Users
+        await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+
+        var user = await dbContext.Users
             .FirstOrDefaultAsync(
                 x => x.Id == userId,
                 cancellationToken)
             ?? throw new KeyNotFoundException(
                 "Không tìm thấy tài khoản tài xế.");
 
-        var profile = await _dbContext.DriverProfiles
+        var profile = await dbContext.DriverProfiles
             .IgnoreQueryFilters()
             .FirstOrDefaultAsync(
                 x => x.UserId == userId,
@@ -371,7 +388,7 @@ public sealed class DriverProfileService : IDriverProfileService
                 IsActive = request.IsActive
             };
 
-            _dbContext.DriverProfiles.Add(profile);
+            dbContext.DriverProfiles.Add(profile);
         }
         else
         {
@@ -385,6 +402,7 @@ public sealed class DriverProfileService : IDriverProfileService
         }
 
         await ValidateUniqueDataAsync(
+            dbContext,
             profile.Id,
             request.CitizenId,
             request.VehiclePlate,
@@ -441,13 +459,14 @@ public sealed class DriverProfileService : IDriverProfileService
         profile.IsActive =
             request.IsActive;
 
-        await _dbContext.SaveChangesAsync(
+        await dbContext.SaveChangesAsync(
             cancellationToken);
 
         return profile.Id;
     }
 
-    private async Task ValidateUniqueDataAsync(
+    private static async Task ValidateUniqueDataAsync(
+    ApplicationDbContext dbContext,
     Guid currentId,
     string? citizenId,
     string? vehiclePlate,
@@ -458,7 +477,7 @@ public sealed class DriverProfileService : IDriverProfileService
 
         if (!string.IsNullOrWhiteSpace(normalizedCitizenId))
         {
-            var exists = await _dbContext.DriverProfiles
+            var exists = await dbContext.DriverProfiles
                 .IgnoreQueryFilters()
                 .AnyAsync(
                     x =>
@@ -479,7 +498,7 @@ public sealed class DriverProfileService : IDriverProfileService
 
         if (!string.IsNullOrWhiteSpace(normalizedPlate))
         {
-            var exists = await _dbContext.DriverProfiles
+            var exists = await dbContext.DriverProfiles
                 .IgnoreQueryFilters()
                 .AnyAsync(
                     x =>
