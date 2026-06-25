@@ -88,6 +88,10 @@ builder.Services.AddScoped<
     IAdminAccountService,
     AdminAccountService>();
 
+builder.Services.AddScoped<
+    ICompanyProfileService,
+    CompanyProfileService>();
+
 var app = builder.Build();
 
 if (!app.Environment.IsDevelopment())

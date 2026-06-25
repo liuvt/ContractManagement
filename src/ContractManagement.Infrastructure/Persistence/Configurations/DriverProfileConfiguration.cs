@@ -19,6 +19,9 @@ public sealed class DriverProfileConfiguration
         builder.Property(x => x.CitizenId)
             .HasMaxLength(20);
 
+        builder.Property(x => x.CitizenIdIssuedDate)
+            .HasColumnType("date");
+
         builder.Property(x => x.Address)
             .HasMaxLength(500);
 
@@ -51,6 +54,18 @@ public sealed class DriverProfileConfiguration
             .HasForeignKey<DriverProfile>(x => x.UserId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        builder.Property(x => x.CompanyProfileId)
+            .IsRequired();
+
+        builder.HasOne(x => x.CompanyProfile)
+            .WithMany(x => x.DriverProfiles)
+            .HasForeignKey(x => x.CompanyProfileId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+
+        builder.HasIndex(x => x.CompanyProfileId)
+            .HasDatabaseName("IX_DriverProfiles_CompanyProfileId");
+
         builder.HasIndex(x => x.UserId)
             .IsUnique()
             .HasDatabaseName("UX_DriverProfiles_UserId");
@@ -72,6 +87,14 @@ public sealed class DriverProfileConfiguration
         })
         .HasDatabaseName("IX_DriverProfiles_Area_Active");
 
+        builder.HasIndex(x => new
+        {
+            x.CompanyProfileId,
+            x.IsActive
+        })
+        .HasDatabaseName("IX_DriverProfiles_Company_Active");
+
         builder.HasQueryFilter(x => !x.IsDeleted);
+
     }
 }

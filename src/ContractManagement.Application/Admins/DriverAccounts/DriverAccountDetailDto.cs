@@ -1,9 +1,10 @@
-﻿using ContractManagement.Application.Admins.DriverProfiles;
+using ContractManagement.Application.Admins.DriverProfiles;
 
 namespace ContractManagement.Application.Admins.DriverAccounts;
+
 public sealed class DriverAccountDetailDto
 {
-    public string Id { get; set; } = string.Empty;
+    public string UserId { get; set; } = string.Empty;
 
     public string UserName { get; set; } = string.Empty;
 
@@ -23,5 +24,14 @@ public sealed class DriverAccountDetailDto
 
     public DateTime? UpdatedAt { get; set; }
 
+    /// <summary>
+    /// Null khi chưa có bản ghi DriverProfile.
+    /// </summary>
     public DriverProfileDto? Profile { get; set; }
+
+    /// <summary>
+    /// Công ty quản lý của tài xế.
+    /// Null khi chưa có hồ sơ hoặc chưa chọn công ty.
+    /// </summary>
+    public DriverCompanyProfileDto? Company { get; set; }
 }

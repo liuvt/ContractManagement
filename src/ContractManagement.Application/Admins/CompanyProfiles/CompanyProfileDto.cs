@@ -1,4 +1,4 @@
-﻿namespace ContractManagement.Application.Admins.AdminAccounts;
+﻿namespace ContractManagement.Application.Admins.CompanyProfiles;
 
 public sealed class CompanyProfileDto
 {
@@ -33,6 +33,14 @@ public sealed class CompanyProfileDto
     public bool IsActive { get; set; }
 
     public bool IsDefault { get; set; }
+
+    public string ManagedByUserId { get; set; } = string.Empty;
+
+    public string ManagedByUserName { get; set; } = string.Empty;
+
+    public string ManagedByFullName { get; set; } = string.Empty;
+
+    public int DriverCount { get; set; }
 
     public DateTime CreatedAt { get; set; }
 

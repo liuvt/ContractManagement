@@ -1,4 +1,5 @@
-﻿using ContractManagement.Domain.Identity;
+﻿using ContractManagement.Domain.Drivers;
+using ContractManagement.Domain.Identity;
 
 namespace ContractManagement.Domain.Companies;
 
@@ -45,6 +46,9 @@ public class CompanyProfile
     public string ManagedByUserId { get; set; } = string.Empty;
 
     public ApplicationUser ManagedByUser { get; set; } = null!;
+    // Một công ty có nhiều tài xế
+    public ICollection<DriverProfile> DriverProfiles { get; set; }
+        = new List<DriverProfile>();
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

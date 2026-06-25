@@ -1,0 +1,470 @@
+@inject IDriverProfileService DriverProfileService
+@inject ISnackbar Snackbar
+
+<MudPaper Outlined="true"
+          Class="pa-4 h-100">
+
+    <MudStack Row="true"
+              Justify="Justify.SpaceBetween"
+              AlignItems="AlignItems.Center"
+              Class="mb-4">
+
+        <MudText Typo="Typo.h6">
+            Công ty quản lý
+        </MudText>
+
+        @if (!_editing)
+        {
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Primary"
+                       Size="Size.Small"
+                       StartIcon="@Icons.Material.Filled.Edit"
+                       OnClick="StartEdit">
+
+                @(Detail.Company is null
+                    ? "Chọn công ty"
+                    : "Cập nhật")
+
+            </MudButton>
+        }
+        else
+        {
+            <MudIconButton Icon="@Icons.Material.Filled.Close"
+                           Disabled="@_saving"
+                           OnClick="CancelEdit" />
+        }
+
+    </MudStack>
+
+    <MudDivider Class="mb-4" />
+
+    @if (!_editing)
+    {
+        @if (Detail.Company is null)
+        {
+            <MudStack AlignItems="AlignItems.Center"
+                      Justify="Justify.Center"
+                      Spacing="2"
+                      Class="py-8">
+
+                <MudIcon Icon="@Icons.Material.Filled.Business"
+                         Size="Size.Large"
+                         Color="Color.Warning" />
+
+                <MudText Typo="Typo.h6"
+                         Color="Color.Warning"
+                         Align="Align.Center">
+                    CHƯA CẬP NHẬT CÔNG TY QUẢN LÝ
+                </MudText>
+
+            </MudStack>
+        }
+        else
+        {
+            var company = Detail.Company;
+
+            <MudStack Row="true"
+                      Spacing="2"
+                      Class="mb-3">
+
+                <MudChip T="string"
+                         Size="Size.Small"
+                         Color="@(company.IsActive
+                             ? Color.Success
+                             : Color.Error)">
+
+                    @(company.IsActive
+                        ? "Đang hoạt động"
+                        : "Ngừng hoạt động")
+
+                </MudChip>
+
+                @if (company.IsDefault)
+                {
+                    <MudChip T="string"
+                             Size="Size.Small"
+                             Color="Color.Primary">
+                        Công ty mặc định
+                    </MudChip>
+                }
+
+            </MudStack>
+
+            <MudGrid>
+
+                <MudItem xs="12">
+                    <CompanyInfoItem Label="Tên doanh nghiệp"
+                                     Value="@DisplayValue(company.CompanyName)" />
+                </MudItem>
+
+                <MudItem xs="12" sm="6">
+                    <CompanyInfoItem Label="Mã số thuế"
+                                     Value="@DisplayValue(company.TaxCode)" />
+                </MudItem>
+
+                <MudItem xs="12" sm="6">
+                    <CompanyInfoItem Label="Số giấy phép kinh doanh"
+                                     Value="@DisplayValue(company.BusinessLicenseNumber)" />
+                </MudItem>
+
+                <MudItem xs="12">
+                    <CompanyInfoItem Label="Địa chỉ"
+                                     Value="@DisplayValue(company.Address)" />
+                </MudItem>
+
+                <MudItem xs="12" sm="6">
+                    <CompanyInfoItem Label="Số điện thoại"
+                                     Value="@DisplayValue(company.PhoneNumber)" />
+                </MudItem>
+
+                <MudItem xs="12" sm="6">
+                    <CompanyInfoItem Label="Email"
+                                     Value="@DisplayValue(company.Email)" />
+                </MudItem>
+
+                <MudItem xs="12">
+                    <MudDivider Class="my-2" />
+                </MudItem>
+
+                <MudItem xs="12" sm="6">
+                    <CompanyInfoItem Label="Người đại diện"
+                                     Value="@DisplayValue(company.RepresentativeName)" />
+                </MudItem>
+
+                <MudItem xs="12" sm="6">
+                    <CompanyInfoItem Label="Chức vụ"
+                                     Value="@DisplayValue(company.RepresentativePosition)" />
+                </MudItem>
+
+                <MudItem xs="12" sm="6">
+                    <CompanyInfoItem Label="CCCD người đại diện"
+                                     Value="@DisplayValue(company.RepresentativeCitizenId)" />
+                </MudItem>
+
+                <MudItem xs="12" sm="6">
+                    <CompanyInfoItem Label="Ngày cấp CCCD"
+                                     Value="@DisplayDate(company.RepresentativeCitizenIdIssuedDate)" />
+                </MudItem>
+
+                <MudItem xs="12">
+                    <CompanyInfoItem Label="Nơi cấp CCCD"
+                                     Value="@DisplayValue(company.RepresentativeCitizenIdIssuedPlace)" />
+                </MudItem>
+
+                <MudItem xs="12">
+                    <MudDivider Class="my-2" />
+                </MudItem>
+
+                <MudItem xs="12" sm="6">
+                    <CompanyInfoItem Label="Số tài khoản"
+                                     Value="@DisplayValue(company.BankAccountNumber)" />
+                </MudItem>
+
+                <MudItem xs="12" sm="6">
+                    <CompanyInfoItem Label="Ngân hàng"
+                                     Value="@DisplayValue(company.BankName)" />
+                </MudItem>
+
+                <MudItem xs="12" sm="6">
+                    <CompanyInfoItem Label="Ngày tạo"
+                                     Value="@DisplayDateTime(company.CreatedAt)" />
+                </MudItem>
+
+                <MudItem xs="12" sm="6">
+                    <CompanyInfoItem Label="Cập nhật gần nhất"
+                                     Value="@DisplayDateTime(company.UpdatedAt)" />
+                </MudItem>
+
+            </MudGrid>
+        }
+    }
+    else
+    {
+        <MudSelect T="Guid"
+                   Label="Công ty quản lý"
+                   @bind-Value="_companyId"
+                   Variant="Variant.Outlined"
+                   Required="true"
+                   RequiredError="Vui lòng chọn công ty quản lý."
+                   FullWidth="true">
+
+            @foreach (var company in Companies)
+            {
+                <MudSelectItem T="Guid"
+                               Value="@company.Id">
+
+                    @company.CompanyName (@company.TaxCode)
+                    @(company.IsDefault ? " - Mặc định" : null)
+
+                </MudSelectItem>
+            }
+
+        </MudSelect>
+
+        @if (Companies.Count == 0)
+        {
+            <MudAlert Severity="Severity.Warning"
+                      Variant="Variant.Outlined"
+                      Class="mt-3">
+                Chưa có công ty đang hoạt động.
+            </MudAlert>
+        }
+
+        @if (Detail.Profile is null)
+        {
+            <MudAlert Severity="Severity.Info"
+                      Variant="Variant.Outlined"
+                      Class="mt-3">
+
+                Công ty sẽ được lưu khi bổ sung hồ sơ tài xế.
+
+            </MudAlert>
+        }
+
+        <MudStack Row="true"
+                  Justify="Justify.FlexEnd"
+                  Spacing="2"
+                  Class="mt-5">
+
+            <MudButton Variant="Variant.Outlined"
+                       Disabled="@_saving"
+                       OnClick="CancelEdit">
+                Hủy
+            </MudButton>
+
+            @if (Detail.Profile is null)
+            {
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           Disabled="@(_companyId == Guid.Empty)"
+                           OnClick="AcceptCompanyAsync">
+                    Xác nhận lựa chọn
+                </MudButton>
+            }
+            else
+            {
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           Disabled="@(_saving || _companyId == Guid.Empty)"
+                           StartIcon="@Icons.Material.Filled.Save"
+                           OnClick="SaveCompanyAsync">
+
+                    @if (_saving)
+                    {
+                        <MudProgressCircular Indeterminate="true"
+                                             Size="Size.Small"
+                                             Class="mr-2" />
+                    }
+
+                    @(_saving ? "Đang lưu..." : "Lưu công ty")
+
+                </MudButton>
+            }
+
+        </MudStack>
+    }
+
+</MudPaper>
+
+@code {
+    [Parameter, EditorRequired]
+    public DriverAccountDetailDto Detail { get; set; } = null!;
+
+    [Parameter]
+    public IReadOnlyList<CompanyProfileOptionDto> Companies { get; set; }
+        = Array.Empty<CompanyProfileOptionDto>();
+
+    [Parameter]
+    public Guid SelectedCompanyId { get; set; }
+
+    [Parameter]
+    public EventCallback<Guid> SelectedCompanyIdChanged { get; set; }
+
+    [Parameter]
+    public EventCallback OnChanged { get; set; }
+
+    private bool _editing;
+    private bool _saving;
+
+    private Guid _companyId;
+
+    protected override void OnParametersSet()
+    {
+        if (!_editing)
+        {
+            _companyId =
+                Detail.Profile?.CompanyProfileId
+                ?? SelectedCompanyId;
+        }
+    }
+
+    private void StartEdit()
+    {
+        _companyId =
+            Detail.Profile?.CompanyProfileId
+            ?? SelectedCompanyId;
+
+        if (_companyId == Guid.Empty)
+        {
+            var defaultCompany =
+                Companies.FirstOrDefault(x => x.IsDefault)
+                ?? Companies.FirstOrDefault();
+
+            _companyId =
+                defaultCompany?.Id ?? Guid.Empty;
+        }
+
+        _editing = true;
+    }
+
+    private void CancelEdit()
+    {
+        _companyId =
+            Detail.Profile?.CompanyProfileId
+            ?? SelectedCompanyId;
+
+        _editing = false;
+    }
+
+    private async Task AcceptCompanyAsync()
+    {
+        if (_companyId == Guid.Empty)
+        {
+            Snackbar.Add(
+                "Vui lòng chọn công ty quản lý.",
+                Severity.Warning);
+
+            return;
+        }
+
+        await SelectedCompanyIdChanged.InvokeAsync(
+            _companyId);
+
+        _editing = false;
+
+        Snackbar.Add(
+            "Đã chọn công ty. Hãy bổ sung thông tin tài xế để lưu.",
+            Severity.Info);
+    }
+
+    private async Task SaveCompanyAsync()
+    {
+        if (Detail.Profile is null)
+            return;
+
+        if (_companyId == Guid.Empty)
+        {
+            Snackbar.Add(
+                "Vui lòng chọn công ty quản lý.",
+                Severity.Warning);
+
+            return;
+        }
+
+        try
+        {
+            _saving = true;
+
+            var profile = Detail.Profile;
+
+            var request = new UpdateDriverProfileRequest
+            {
+                CompanyProfileId = _companyId,
+
+                CitizenId = profile.CitizenId,
+
+                CitizenIdIssuedDate =
+                    profile.CitizenIdIssuedDate,
+
+                DateOfBirth = profile.DateOfBirth,
+                Address = profile.Address,
+                AreaCode = profile.AreaCode,
+
+                VehiclePlate = profile.VehiclePlate,
+                VehicleCode = profile.VehicleCode,
+                VehicleType = profile.VehicleType,
+
+                DriverLicenseNumber =
+                    profile.DriverLicenseNumber,
+
+                DriverLicenseClass =
+                    profile.DriverLicenseClass,
+
+                DriverLicenseIssuedDate =
+                    profile.DriverLicenseIssuedDate,
+
+                DriverLicenseExpiryDate =
+                    profile.DriverLicenseExpiryDate,
+
+                AvatarUrl = profile.AvatarUrl,
+
+                CitizenIdFrontUrl =
+                    profile.CitizenIdFrontUrl,
+
+                CitizenIdBackUrl =
+                    profile.CitizenIdBackUrl,
+
+                DriverLicenseFrontUrl =
+                    profile.DriverLicenseFrontUrl,
+
+                DriverLicenseBackUrl =
+                    profile.DriverLicenseBackUrl,
+
+                IsActive = profile.IsActive
+            };
+
+            await DriverProfileService.UpsertByUserIdAsync(
+                Detail.UserId,
+                request);
+
+            await SelectedCompanyIdChanged.InvokeAsync(
+                _companyId);
+
+            Snackbar.Add(
+                "Cập nhật công ty quản lý thành công.",
+                Severity.Success);
+
+            _editing = false;
+
+            await OnChanged.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(
+                ex.Message,
+                Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private static string DisplayValue(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value)
+            ? "Chưa cập nhật"
+            : value;
+    }
+
+    private static string DisplayDate(DateTime? value)
+    {
+        return value.HasValue
+            ? value.Value.ToString("dd/MM/yyyy")
+            : "Chưa cập nhật";
+    }
+
+    private static string DisplayDateTime(DateTime value)
+    {
+        return value.ToLocalTime()
+            .ToString("dd/MM/yyyy HH:mm");
+    }
+
+    private static string DisplayDateTime(DateTime? value)
+    {
+        return value.HasValue
+            ? value.Value.ToLocalTime()
+                .ToString("dd/MM/yyyy HH:mm")
+            : "Chưa cập nhật";
+    }
+}

@@ -1,4 +1,4 @@
-﻿namespace ContractManagement.Application.Admins.AdminAccounts;
+﻿namespace ContractManagement.Application.Admins.CompanyProfiles;
 
 public sealed class AdminAccountDetail
 {

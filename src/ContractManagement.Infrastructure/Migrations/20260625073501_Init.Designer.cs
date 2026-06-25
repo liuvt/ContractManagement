@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace ContractManagement.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260624041030_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20260625073501_Init")]
+    partial class Init
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -24,6 +24,99 @@ namespace ContractManagement.Infrastructure.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
+
+            modelBuilder.Entity("ContractManagement.Domain.Companies.CompanyProfile", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Address")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("BankAccountNumber")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("BankName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("BusinessLicenseNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("CompanyName")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDefault")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("ManagedByUserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("PhoneNumber")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("RepresentativeCitizenId")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime?>("RepresentativeCitizenIdIssuedDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("RepresentativeCitizenIdIssuedPlace")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("RepresentativeName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("RepresentativePosition")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("TaxCode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IsActive");
+
+                    b.HasIndex("ManagedByUserId");
+
+                    b.HasIndex("TaxCode")
+                        .IsUnique();
+
+                    b.HasIndex("ManagedByUserId", "IsDefault");
+
+                    b.ToTable("CompanyProfiles", (string)null);
+                });
 
             modelBuilder.Entity("ContractManagement.Domain.Contracts.Contract", b =>
                 {
@@ -489,11 +582,8 @@ namespace ContractManagement.Infrastructure.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
-                    b.Property<string>("CitizenIdBackUrl")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("CitizenIdFrontUrl")
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<int>("ContractCount")
+                        .HasColumnType("int");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -526,6 +616,9 @@ namespace ContractManagement.Infrastructure.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
+                    b.Property<DateTime?>("LastUsedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("PhoneNumber")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -552,9 +645,12 @@ namespace ContractManagement.Infrastructure.Migrations
                     b.HasIndex("PhoneNumber")
                         .HasDatabaseName("IX_Customers_PhoneNumber");
 
-                    b.HasIndex("CreatedByDriverId", "CreatedAt")
+                    b.HasIndex("CreatedByDriverId", "LastUsedAt")
                         .IsDescending(false, true)
-                        .HasDatabaseName("IX_Customers_Driver_CreatedAt");
+                        .HasDatabaseName("IX_Customers_Driver_LastUsedAt");
+
+                    b.HasIndex("CreatedByDriverId", "PhoneNumber")
+                        .HasDatabaseName("IX_Customers_Driver_PhoneNumber");
 
                     b.ToTable("Customers", (string)null);
                 });
@@ -565,17 +661,33 @@ namespace ContractManagement.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("Address")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("AreaCode")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
                     b.Property<string>("AvatarUrl")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
+                    b.Property<string>("CitizenId")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
                     b.Property<string>("CitizenIdBackUrl")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("CitizenIdFrontUrl")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("CitizenIdIssuedDate")
+                        .HasColumnType("date");
+
+                    b.Property<Guid>("CompanyProfileId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -583,23 +695,37 @@ namespace ContractManagement.Infrastructure.Migrations
                     b.Property<string>("CreatedBy")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<DateTime?>("DateOfBirth")
+                        .HasColumnType("datetime2");
+
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("DeletedBy")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("DriverCode")
-                        .IsRequired()
-                        .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)");
+                    b.Property<string>("DriverLicenseBackUrl")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("DriverLicenseClass")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<DateTime?>("DriverLicenseExpiryDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DriverLicenseFrontUrl")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("DriverLicenseIssuedDate")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("DriverLicenseNumber")
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
@@ -618,6 +744,7 @@ namespace ContractManagement.Infrastructure.Migrations
 
                     b.Property<string>("UserId")
                         .IsRequired()
+                        .HasMaxLength(450)
                         .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("VehicleCode")
@@ -634,10 +761,12 @@ namespace ContractManagement.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("DriverCode")
-                        .IsUnique()
-                        .HasDatabaseName("UX_DriverProfiles_DriverCode")
-                        .HasFilter("[IsDeleted] = 0");
+                    b.HasIndex("CitizenId")
+                        .HasDatabaseName("IX_DriverProfiles_CitizenId")
+                        .HasFilter("[CitizenId] IS NOT NULL AND [IsDeleted] = 0");
+
+                    b.HasIndex("CompanyProfileId")
+                        .HasDatabaseName("IX_DriverProfiles_CompanyProfileId");
 
                     b.HasIndex("UserId")
                         .IsUnique()
@@ -646,6 +775,12 @@ namespace ContractManagement.Infrastructure.Migrations
                     b.HasIndex("VehiclePlate")
                         .HasDatabaseName("IX_DriverProfiles_VehiclePlate")
                         .HasFilter("[VehiclePlate] IS NOT NULL AND [IsDeleted] = 0");
+
+                    b.HasIndex("AreaCode", "IsActive")
+                        .HasDatabaseName("IX_DriverProfiles_Area_Active");
+
+                    b.HasIndex("CompanyProfileId", "IsActive")
+                        .HasDatabaseName("IX_DriverProfiles_Company_Active");
 
                     b.ToTable("DriverProfiles", (string)null);
                 });
@@ -658,26 +793,11 @@ namespace ContractManagement.Infrastructure.Migrations
                     b.Property<int>("AccessFailedCount")
                         .HasColumnType("int");
 
-                    b.Property<string>("Address")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<string>("AreaCode")
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<string>("CitizenId")
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("DateOfBirth")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Email")
@@ -720,7 +840,7 @@ namespace ContractManagement.Infrastructure.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("PhoneNumber")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<bool>("PhoneNumberConfirmed")
                         .HasColumnType("bit");
@@ -740,14 +860,11 @@ namespace ContractManagement.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CitizenId")
-                        .HasDatabaseName("IX_AspNetUsers_CitizenId")
-                        .HasFilter("[CitizenId] IS NOT NULL");
-
                     b.HasIndex("EmployeeCode")
                         .IsUnique()
-                        .HasDatabaseName("UX_AspNetUsers_EmployeeCode")
                         .HasFilter("[EmployeeCode] IS NOT NULL");
+
+                    b.HasIndex("IsActive");
 
                     b.HasIndex("NormalizedEmail")
                         .HasDatabaseName("EmailIndex");
@@ -757,8 +874,8 @@ namespace ContractManagement.Infrastructure.Migrations
                         .HasDatabaseName("UserNameIndex")
                         .HasFilter("[NormalizedUserName] IS NOT NULL");
 
-                    b.HasIndex("AreaCode", "IsActive")
-                        .HasDatabaseName("IX_AspNetUsers_Area_Active");
+                    b.HasIndex("PhoneNumber")
+                        .HasFilter("[PhoneNumber] IS NOT NULL");
 
                     b.ToTable("AspNetUsers", (string)null);
                 });
@@ -1101,6 +1218,17 @@ namespace ContractManagement.Infrastructure.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("ContractManagement.Domain.Companies.CompanyProfile", b =>
+                {
+                    b.HasOne("ContractManagement.Domain.Identity.ApplicationUser", "ManagedByUser")
+                        .WithMany("ManagedCompanies")
+                        .HasForeignKey("ManagedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ManagedByUser");
+                });
+
             modelBuilder.Entity("ContractManagement.Domain.Contracts.Contract", b =>
                 {
                     b.HasOne("ContractManagement.Domain.Contracts.ContractTemplate", "ContractTemplate")
@@ -1172,7 +1300,7 @@ namespace ContractManagement.Infrastructure.Migrations
             modelBuilder.Entity("ContractManagement.Domain.Customers.Customer", b =>
                 {
                     b.HasOne("ContractManagement.Domain.Identity.ApplicationUser", "CreatedByDriver")
-                        .WithMany()
+                        .WithMany("CreatedCustomers")
                         .HasForeignKey("CreatedByDriverId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
@@ -1182,11 +1310,19 @@ namespace ContractManagement.Infrastructure.Migrations
 
             modelBuilder.Entity("ContractManagement.Domain.Drivers.DriverProfile", b =>
                 {
+                    b.HasOne("ContractManagement.Domain.Companies.CompanyProfile", "CompanyProfile")
+                        .WithMany("DriverProfiles")
+                        .HasForeignKey("CompanyProfileId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("ContractManagement.Domain.Identity.ApplicationUser", "User")
                         .WithOne("DriverProfile")
                         .HasForeignKey("ContractManagement.Domain.Drivers.DriverProfile", "UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("CompanyProfile");
 
                     b.Navigation("User");
                 });
@@ -1264,6 +1400,11 @@ namespace ContractManagement.Infrastructure.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("ContractManagement.Domain.Companies.CompanyProfile", b =>
+                {
+                    b.Navigation("DriverProfiles");
+                });
+
             modelBuilder.Entity("ContractManagement.Domain.Contracts.Contract", b =>
                 {
                     b.Navigation("Attachments");
@@ -1294,9 +1435,13 @@ namespace ContractManagement.Infrastructure.Migrations
                 {
                     b.Navigation("Contracts");
 
+                    b.Navigation("CreatedCustomers");
+
                     b.Navigation("DriverProfile");
 
                     b.Navigation("DriverSignatures");
+
+                    b.Navigation("ManagedCompanies");
                 });
 #pragma warning restore 612, 618
         }

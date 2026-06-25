@@ -1,0 +1,495 @@
+﻿@page "/admin/company-profiles/{Id:guid}"
+@attribute [Authorize(Roles = "Admin")]
+
+@inject ICompanyProfileService CompanyProfileService
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@inject ISnackbar Snackbar
+
+<PageTitle>Chi tiết công ty</PageTitle>
+
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate="true"
+                       Color="Color.Primary" />
+}
+else if (_detail is null)
+{
+    <MudAlert Severity="Severity.Warning"
+              Variant="Variant.Outlined">
+        Không tìm thấy hồ sơ doanh nghiệp.
+    </MudAlert>
+}
+else
+{
+    <PageHeader Title="@_detail.CompanyName"
+                Subtitle="@($"Mã số thuế: {_detail.TaxCode}")">
+
+        <MudButton Variant="Variant.Outlined"
+                   StartIcon="@Icons.Material.Filled.ArrowBack"
+                   OnClick="GoBack">
+            Quay lại
+        </MudButton>
+
+    </PageHeader>
+
+    <MudPaper Outlined="true"
+              Class="pa-4">
+
+        <MudStack Row="true"
+                  Justify="Justify.SpaceBetween"
+                  AlignItems="AlignItems.Center"
+                  Class="mb-4">
+
+            <div>
+                <MudText Typo="Typo.h6">
+                    Cập nhật hồ sơ doanh nghiệp
+                </MudText>
+
+                <MudText Typo="Typo.body2"
+                         Color="Color.Secondary">
+                    @_detail.DriverCount tài xế đang trực thuộc
+                </MudText>
+            </div>
+
+            <MudStack Row="true"
+                      Spacing="2">
+
+                @if (!_detail.IsDefault)
+                {
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Warning"
+                               StartIcon="@Icons.Material.Filled.Star"
+                               Disabled="@_saving"
+                               OnClick="SetDefaultAsync">
+                        Đặt mặc định
+                    </MudButton>
+                }
+
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Error"
+                           StartIcon="@Icons.Material.Filled.Delete"
+                           Disabled="@(_saving || _detail.IsDefault)"
+                           OnClick="DeleteAsync">
+                    Xóa
+                </MudButton>
+
+            </MudStack>
+        </MudStack>
+
+        <MudDivider Class="mb-4" />
+
+        <MudForm @ref="_form">
+            <MudGrid>
+                <MudItem xs="12">
+                    <MudTextField T="string"
+                                  Label="Tên doanh nghiệp"
+                                  @bind-Value="_model.CompanyName"
+                                  Variant="Variant.Outlined"
+                                  Required="true"
+                                  RequiredError="Vui lòng nhập tên doanh nghiệp."
+                                  FullWidth="true" />
+                </MudItem>
+
+                <MudItem xs="12" md="6">
+                    <MudTextField T="string"
+                                  Label="Mã số thuế"
+                                  @bind-Value="_model.TaxCode"
+                                  Variant="Variant.Outlined"
+                                  Required="true"
+                                  RequiredError="Vui lòng nhập mã số thuế."
+                                  FullWidth="true" />
+                </MudItem>
+
+                <MudItem xs="12" md="6">
+                    <MudTextField T="string"
+                                  Label="Số giấy phép kinh doanh"
+                                  @bind-Value="_model.BusinessLicenseNumber"
+                                  Variant="Variant.Outlined"
+                                  FullWidth="true" />
+                </MudItem>
+
+                <MudItem xs="12">
+                    <MudTextField T="string"
+                                  Label="Địa chỉ"
+                                  @bind-Value="_model.Address"
+                                  Variant="Variant.Outlined"
+                                  Required="true"
+                                  RequiredError="Vui lòng nhập địa chỉ."
+                                  Lines="2"
+                                  FullWidth="true" />
+                </MudItem>
+
+                <MudItem xs="12" md="6">
+                    <MudTextField T="string"
+                                  Label="Số điện thoại"
+                                  @bind-Value="_model.PhoneNumber"
+                                  Variant="Variant.Outlined"
+                                  FullWidth="true" />
+                </MudItem>
+
+                <MudItem xs="12" md="6">
+                    <MudTextField T="string"
+                                  Label="Email"
+                                  @bind-Value="_model.Email"
+                                  Variant="Variant.Outlined"
+                                  InputType="InputType.Email"
+                                  FullWidth="true" />
+                </MudItem>
+
+                <MudItem xs="12">
+                    <MudDivider Class="my-2" />
+
+                    <MudText Typo="Typo.subtitle1">
+                        Người đại diện
+                    </MudText>
+                </MudItem>
+
+                <MudItem xs="12" md="6">
+                    <MudTextField T="string"
+                                  Label="Họ tên người đại diện"
+                                  @bind-Value="_model.RepresentativeName"
+                                  Variant="Variant.Outlined"
+                                  Required="true"
+                                  RequiredError="Vui lòng nhập người đại diện."
+                                  FullWidth="true" />
+                </MudItem>
+
+                <MudItem xs="12" md="6">
+                    <MudTextField T="string"
+                                  Label="Chức vụ"
+                                  @bind-Value="_model.RepresentativePosition"
+                                  Variant="Variant.Outlined"
+                                  FullWidth="true" />
+                </MudItem>
+
+                <MudItem xs="12" md="6">
+                    <MudTextField T="string"
+                                  Label="Số CCCD người đại diện"
+                                  @bind-Value="_model.RepresentativeCitizenId"
+                                  Variant="Variant.Outlined"
+                                  Required="true"
+                                  RequiredError="Vui lòng nhập số CCCD."
+                                  FullWidth="true" />
+                </MudItem>
+
+                <MudItem xs="12" md="6">
+                    <MudDatePicker Label="Ngày cấp CCCD"
+                                   @bind-Date="_model.RepresentativeCitizenIdIssuedDate"
+                                   DateFormat="dd/MM/yyyy"
+                                   Variant="Variant.Outlined"
+                                   Clearable="true"
+                                   Style="width:100%;" />
+                </MudItem>
+
+                <MudItem xs="12">
+                    <MudTextField T="string"
+                                  Label="Nơi cấp CCCD"
+                                  @bind-Value="_model.RepresentativeCitizenIdIssuedPlace"
+                                  Variant="Variant.Outlined"
+                                  FullWidth="true" />
+                </MudItem>
+
+                <MudItem xs="12">
+                    <MudDivider Class="my-2" />
+
+                    <MudText Typo="Typo.subtitle1">
+                        Thông tin thanh toán
+                    </MudText>
+                </MudItem>
+
+                <MudItem xs="12" md="6">
+                    <MudTextField T="string"
+                                  Label="Số tài khoản ngân hàng"
+                                  @bind-Value="_model.BankAccountNumber"
+                                  Variant="Variant.Outlined"
+                                  FullWidth="true" />
+                </MudItem>
+
+                <MudItem xs="12" md="6">
+                    <MudTextField T="string"
+                                  Label="Ngân hàng"
+                                  @bind-Value="_model.BankName"
+                                  Variant="Variant.Outlined"
+                                  FullWidth="true" />
+                </MudItem>
+
+                <MudItem xs="12" md="6">
+                    <MudSwitch T="bool"
+                               @bind-Value="_model.IsActive"
+                               Color="Color.Success"
+                               Label="Đang hoạt động" />
+                </MudItem>
+
+                <MudItem xs="12" md="6">
+                    <MudSwitch T="bool"
+                               @bind-Value="_model.IsDefault"
+                               Color="Color.Primary"
+                               Label="Công ty mặc định" />
+                </MudItem>
+
+                <MudItem xs="12">
+                    <MudDivider Class="my-2" />
+
+                    <MudText Typo="Typo.subtitle1">
+                        Thông tin hệ thống
+                    </MudText>
+                </MudItem>
+
+                <MudItem xs="12" md="4">
+                    <MudText Typo="Typo.caption"
+                             Color="Color.Secondary">
+                        Tài khoản quản lý
+                    </MudText>
+
+                    <MudText Typo="Typo.body1">
+                        @_detail.ManagedByFullName
+                        (@_detail.ManagedByUserName)
+                    </MudText>
+                </MudItem>
+
+                <MudItem xs="12" md="4">
+                    <MudText Typo="Typo.caption"
+                             Color="Color.Secondary">
+                        Ngày tạo
+                    </MudText>
+
+                    <MudText Typo="Typo.body1">
+                        @DisplayDateTime(_detail.CreatedAt)
+                    </MudText>
+                </MudItem>
+
+                <MudItem xs="12" md="4">
+                    <MudText Typo="Typo.caption"
+                             Color="Color.Secondary">
+                        Cập nhật gần nhất
+                    </MudText>
+
+                    <MudText Typo="Typo.body1">
+                        @DisplayDateTime(_detail.UpdatedAt)
+                    </MudText>
+                </MudItem>
+            </MudGrid>
+
+            <MudStack Row="true"
+                      Justify="Justify.FlexEnd"
+                      Spacing="2"
+                      Class="mt-5">
+
+                <MudButton Variant="Variant.Outlined"
+                           Disabled="@_saving"
+                           OnClick="LoadAsync">
+                    Khôi phục
+                </MudButton>
+
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           Disabled="@_saving"
+                           StartIcon="@Icons.Material.Filled.Save"
+                           OnClick="SaveAsync">
+
+                    @(_saving ? "Đang lưu..." : "Lưu thay đổi")
+
+                </MudButton>
+
+            </MudStack>
+        </MudForm>
+
+    </MudPaper>
+}
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private MudForm? _form;
+
+    private bool _loading = true;
+    private bool _saving;
+
+    private CompanyProfileDto? _detail;
+
+    private UpdateCompanyProfileRequest _model =
+        new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            _loading = true;
+
+            _detail =
+                await CompanyProfileService.GetByIdAsync(Id);
+
+            if (_detail is null)
+                return;
+
+            MapDetailToModel();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(
+                ex.Message,
+                Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void MapDetailToModel()
+    {
+        if (_detail is null)
+            return;
+
+        _model = new UpdateCompanyProfileRequest
+        {
+            CompanyName = _detail.CompanyName,
+            TaxCode = _detail.TaxCode,
+            BusinessLicenseNumber =
+                _detail.BusinessLicenseNumber,
+            Address = _detail.Address,
+            PhoneNumber = _detail.PhoneNumber,
+            Email = _detail.Email,
+            RepresentativeName =
+                _detail.RepresentativeName,
+            RepresentativePosition =
+                _detail.RepresentativePosition,
+            RepresentativeCitizenId =
+                _detail.RepresentativeCitizenId,
+            RepresentativeCitizenIdIssuedDate =
+                _detail.RepresentativeCitizenIdIssuedDate,
+            RepresentativeCitizenIdIssuedPlace =
+                _detail.RepresentativeCitizenIdIssuedPlace,
+            BankAccountNumber =
+                _detail.BankAccountNumber,
+            BankName = _detail.BankName,
+            IsActive = _detail.IsActive,
+            IsDefault = _detail.IsDefault
+        };
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_saving || _form is null)
+            return;
+
+        await _form.ValidateAsync();
+
+        if (!_form.IsValid)
+            return;
+
+        try
+        {
+            _saving = true;
+
+            await CompanyProfileService.UpdateAsync(
+                Id,
+                _model);
+
+            Snackbar.Add(
+                "Cập nhật hồ sơ doanh nghiệp thành công.",
+                Severity.Success);
+
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(
+                ex.Message,
+                Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task SetDefaultAsync()
+    {
+        try
+        {
+            _saving = true;
+
+            await CompanyProfileService.SetDefaultAsync(Id);
+
+            Snackbar.Add(
+                "Đã đặt công ty làm mặc định.",
+                Severity.Success);
+
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task DeleteAsync()
+    {
+        if (_detail is null)
+            return;
+
+        var confirmed =
+            await JS.InvokeAsync<bool>(
+                "confirm",
+                $"Bạn có chắc muốn xóa công ty “{_detail.CompanyName}” không?");
+
+        if (!confirmed)
+            return;
+
+        try
+        {
+            _saving = true;
+
+            await CompanyProfileService.DeleteAsync(Id);
+
+            Snackbar.Add(
+                "Đã xóa hồ sơ doanh nghiệp.",
+                Severity.Success);
+
+            Navigation.NavigateTo(
+                "/admin/company-profiles");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo(
+            "/admin/company-profiles");
+    }
+
+    private static string DisplayDateTime(
+        DateTime value)
+    {
+        return value.ToLocalTime()
+            .ToString("dd/MM/yyyy HH:mm");
+    }
+
+    private static string DisplayDateTime(
+        DateTime? value)
+    {
+        return value.HasValue
+            ? value.Value.ToLocalTime()
+                .ToString("dd/MM/yyyy HH:mm")
+            : "Chưa cập nhật";
+    }
+}

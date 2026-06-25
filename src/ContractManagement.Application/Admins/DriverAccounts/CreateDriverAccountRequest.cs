@@ -2,6 +2,8 @@
 
 public sealed class CreateDriverAccountRequest
 {
+    public Guid CompanyProfileId { get; set; }
+
     public string UserName { get; set; } = string.Empty;
 
     public string Password { get; set; } = string.Empty;

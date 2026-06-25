@@ -680,6 +680,12 @@ namespace ContractManagement.Infrastructure.Migrations
                     b.Property<string>("CitizenIdFrontUrl")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<DateTime?>("CitizenIdIssuedDate")
+                        .HasColumnType("date");
+
+                    b.Property<Guid>("CompanyProfileId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -756,6 +762,9 @@ namespace ContractManagement.Infrastructure.Migrations
                         .HasDatabaseName("IX_DriverProfiles_CitizenId")
                         .HasFilter("[CitizenId] IS NOT NULL AND [IsDeleted] = 0");
 
+                    b.HasIndex("CompanyProfileId")
+                        .HasDatabaseName("IX_DriverProfiles_CompanyProfileId");
+
                     b.HasIndex("UserId")
                         .IsUnique()
                         .HasDatabaseName("UX_DriverProfiles_UserId");
@@ -766,6 +775,9 @@ namespace ContractManagement.Infrastructure.Migrations
 
                     b.HasIndex("AreaCode", "IsActive")
                         .HasDatabaseName("IX_DriverProfiles_Area_Active");
+
+                    b.HasIndex("CompanyProfileId", "IsActive")
+                        .HasDatabaseName("IX_DriverProfiles_Company_Active");
 
                     b.ToTable("DriverProfiles", (string)null);
                 });
@@ -1295,11 +1307,19 @@ namespace ContractManagement.Infrastructure.Migrations
 
             modelBuilder.Entity("ContractManagement.Domain.Drivers.DriverProfile", b =>
                 {
+                    b.HasOne("ContractManagement.Domain.Companies.CompanyProfile", "CompanyProfile")
+                        .WithMany("DriverProfiles")
+                        .HasForeignKey("CompanyProfileId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("ContractManagement.Domain.Identity.ApplicationUser", "User")
                         .WithOne("DriverProfile")
                         .HasForeignKey("ContractManagement.Domain.Drivers.DriverProfile", "UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("CompanyProfile");
 
                     b.Navigation("User");
                 });
@@ -1375,6 +1395,11 @@ namespace ContractManagement.Infrastructure.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("ContractManagement.Domain.Companies.CompanyProfile", b =>
+                {
+                    b.Navigation("DriverProfiles");
                 });
 
             modelBuilder.Entity("ContractManagement.Domain.Contracts.Contract", b =>

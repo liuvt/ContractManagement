@@ -16,15 +16,27 @@ public sealed class DriverProfileDto
 
     public string DriverCode { get; set; } = string.Empty;
 
+    // Thông tin cá nhân của tài xế
+
     public string FullName { get; set; } = string.Empty;
 
     public string? CitizenId { get; set; }
+    public DateTime? CitizenIdIssuedDate { get; set; }
 
     public DateTime? DateOfBirth { get; set; }
 
     public string? Address { get; set; }
 
     public string? AreaCode { get; set; }
+
+    // Thông tin công ty quản lý tài xế
+    public Guid CompanyProfileId { get; set; }
+
+    public string CompanyName { get; set; } = string.Empty;
+
+    public string CompanyTaxCode { get; set; } = string.Empty;
+
+    // Thông tin phương tiện của tài xế
 
     public string? VehiclePlate { get; set; }
 

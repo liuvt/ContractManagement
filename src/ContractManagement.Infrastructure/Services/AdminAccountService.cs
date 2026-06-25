@@ -1,5 +1,6 @@
 ﻿using ContractManagement.Application.Abstractions;
 using ContractManagement.Application.Admins.AdminAccounts;
+using ContractManagement.Application.Admins.CompanyProfiles;
 using ContractManagement.Application.Common;
 using ContractManagement.Domain.Companies;
 using ContractManagement.Domain.Identity;

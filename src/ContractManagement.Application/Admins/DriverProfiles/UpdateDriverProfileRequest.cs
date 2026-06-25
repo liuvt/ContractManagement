@@ -3,12 +3,14 @@
 public sealed class UpdateDriverProfileRequest
 {
     public string? CitizenId { get; set; }
+    public DateTime? CitizenIdIssuedDate { get; set; }
 
     public DateTime? DateOfBirth { get; set; }
 
     public string? Address { get; set; }
 
     public string? AreaCode { get; set; }
+    public Guid CompanyProfileId { get; set; }
 
     public string? VehiclePlate { get; set; }
 

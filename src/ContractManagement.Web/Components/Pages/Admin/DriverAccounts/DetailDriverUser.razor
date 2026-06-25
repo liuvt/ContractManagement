@@ -1,0 +1,144 @@
+@inject IDriverAccountService DriverAccountService
+@inject ISnackbar Snackbar
+
+@if (!_editing)
+{
+    <MudPaper Outlined="true" Class="pa-4 h-100">
+        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-4">
+            <MudText Typo="Typo.h6">Thông tin tài khoản</MudText>
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Primary"
+                       Size="Size.Small"
+                       StartIcon="@Icons.Material.Filled.Edit"
+                       OnClick="StartEdit">
+                Cập nhật
+            </MudButton>
+        </MudStack>
+
+        <MudDivider Class="mb-3" />
+
+        <MudList T="string">
+            <MudListItem T="string"><MudText Typo="Typo.caption" Color="Color.Secondary">Tên đăng nhập</MudText><MudText Typo="Typo.body1">@DisplayValue(Detail.UserName)</MudText></MudListItem>
+            <MudListItem T="string"><MudText Typo="Typo.caption" Color="Color.Secondary">Họ và tên</MudText><MudText Typo="Typo.body1">@DisplayValue(Detail.FullName)</MudText></MudListItem>
+            <MudListItem T="string"><MudText Typo="Typo.caption" Color="Color.Secondary">Mã nhân viên</MudText><MudText Typo="Typo.body1">@DisplayValue(Detail.EmployeeCode)</MudText></MudListItem>
+            <MudListItem T="string"><MudText Typo="Typo.caption" Color="Color.Secondary">Số điện thoại</MudText><MudText Typo="Typo.body1">@DisplayValue(Detail.PhoneNumber)</MudText></MudListItem>
+            <MudListItem T="string"><MudText Typo="Typo.caption" Color="Color.Secondary">Email</MudText><MudText Typo="Typo.body1">@DisplayValue(Detail.Email)</MudText></MudListItem>
+            <MudListItem T="string">
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-1">Trạng thái tài khoản</MudText>
+                <MudChip T="string" Size="Size.Small" Color="@(Detail.IsActive ? Color.Success : Color.Error)">
+                    @(Detail.IsActive ? "Đang hoạt động" : "Đã khóa")
+                </MudChip>
+            </MudListItem>
+            <MudListItem T="string">
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-1">Đổi mật khẩu</MudText>
+                <MudChip T="string" Size="Size.Small" Color="@(Detail.MustChangePassword ? Color.Warning : Color.Default)">
+                    @(Detail.MustChangePassword ? "Bắt buộc đổi mật khẩu" : "Không bắt buộc")
+                </MudChip>
+            </MudListItem>
+            <MudListItem T="string"><MudText Typo="Typo.caption" Color="Color.Secondary">Ngày tạo</MudText><MudText Typo="Typo.body1">@DisplayDateTime(Detail.CreatedAt)</MudText></MudListItem>
+            <MudListItem T="string"><MudText Typo="Typo.caption" Color="Color.Secondary">Cập nhật gần nhất</MudText><MudText Typo="Typo.body1">@DisplayDateTime(Detail.UpdatedAt)</MudText></MudListItem>
+        </MudList>
+    </MudPaper>
+}
+else
+{
+    <MudPaper Outlined="true" Class="pa-4 h-100">
+        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-4">
+            <MudText Typo="Typo.h6">Cập nhật tài khoản</MudText>
+            <MudIconButton Icon="@Icons.Material.Filled.Close" Disabled="@_saving" OnClick="CancelEdit" />
+        </MudStack>
+
+        <MudDivider Class="mb-4" />
+
+        <MudForm @ref="_form">
+            <MudGrid>
+                <MudItem xs="12"><MudTextField T="string" Label="Tên đăng nhập" Value="@Detail.UserName" Variant="Variant.Outlined" ReadOnly="true" Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Lock" FullWidth="true" /></MudItem>
+                <MudItem xs="12"><MudTextField T="string" Label="Họ và tên" @bind-Value="_model.FullName" Variant="Variant.Outlined" Required="true" RequiredError="Vui lòng nhập họ và tên." FullWidth="true" /></MudItem>
+                <MudItem xs="12" sm="6"><MudTextField T="string" Label="Mã nhân viên" @bind-Value="_model.EmployeeCode" Variant="Variant.Outlined" FullWidth="true" /></MudItem>
+                <MudItem xs="12" sm="6"><MudTextField T="string" Label="Số điện thoại" @bind-Value="_model.PhoneNumber" Variant="Variant.Outlined" FullWidth="true" /></MudItem>
+                <MudItem xs="12"><MudTextField T="string" Label="Email" @bind-Value="_model.Email" Variant="Variant.Outlined" InputType="InputType.Email" FullWidth="true" /></MudItem>
+                <MudItem xs="12"><MudSwitch T="bool" @bind-Value="_model.IsActive" Color="Color.Primary" Label="Tài khoản đang hoạt động" /></MudItem>
+                <MudItem xs="12"><MudCheckBox T="bool" @bind-Value="_model.MustChangePassword" Color="Color.Primary" Label="Bắt buộc đổi mật khẩu khi đăng nhập" /></MudItem>
+            </MudGrid>
+
+            <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="2" Class="mt-5">
+                <MudButton Variant="Variant.Outlined" Disabled="@_saving" OnClick="CancelEdit">Hủy</MudButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@_saving" StartIcon="@Icons.Material.Filled.Save" OnClick="SaveAsync">
+                    @(_saving ? "Đang lưu..." : "Lưu tài khoản")
+                </MudButton>
+            </MudStack>
+        </MudForm>
+    </MudPaper>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public DriverAccountDetailDto Detail { get; set; } = null!;
+
+    [Parameter]
+    public EventCallback OnChanged { get; set; }
+
+    private MudForm? _form;
+    private bool _editing;
+    private bool _saving;
+    private readonly UpdateDriverAccountRequest _model = new();
+
+    protected override void OnParametersSet()
+    {
+        if (!_editing)
+            LoadModel();
+    }
+
+    private void LoadModel()
+    {
+        _model.FullName = Detail.FullName;
+        _model.EmployeeCode = Detail.EmployeeCode;
+        _model.PhoneNumber = Detail.PhoneNumber;
+        _model.Email = Detail.Email;
+        _model.IsActive = Detail.IsActive;
+        _model.MustChangePassword = Detail.MustChangePassword;
+    }
+
+    private void StartEdit()
+    {
+        LoadModel();
+        _editing = true;
+    }
+
+    private void CancelEdit()
+    {
+        LoadModel();
+        _editing = false;
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_saving || _form is null)
+            return;
+
+        await _form.ValidateAsync();
+        if (!_form.IsValid)
+            return;
+
+        try
+        {
+            _saving = true;
+            await DriverAccountService.UpdateAsync(Detail.UserId, _model);
+            Snackbar.Add("Cập nhật tài khoản thành công.", Severity.Success);
+            _editing = false;
+            await OnChanged.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private static string DisplayValue(string? value) => string.IsNullOrWhiteSpace(value) ? "Chưa cập nhật" : value;
+    private static string DisplayDateTime(DateTime value) => value.ToLocalTime().ToString("dd/MM/yyyy HH:mm");
+    private static string DisplayDateTime(DateTime? value) => value.HasValue ? value.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm") : "Chưa cập nhật";
+}

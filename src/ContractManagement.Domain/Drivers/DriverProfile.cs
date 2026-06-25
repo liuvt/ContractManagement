@@ -1,4 +1,5 @@
-using ContractManagement.Domain.Common;
+﻿using ContractManagement.Domain.Common;
+using ContractManagement.Domain.Companies;
 using ContractManagement.Domain.Identity;
 
 namespace ContractManagement.Domain.Drivers;
@@ -6,8 +7,13 @@ public class DriverProfile : BaseEntity
 {
     public string UserId { get; set; } = string.Empty;
 
-    public string? CitizenId { get; set; }
+    // Công ty quản lý tài xế
+    public Guid CompanyProfileId { get; set; }
 
+    public CompanyProfile CompanyProfile { get; set; } = null!;
+
+    public string? CitizenId { get; set; }
+    public DateTime? CitizenIdIssuedDate { get; set; }
     public DateTime? DateOfBirth { get; set; }
 
     public string? Address { get; set; }

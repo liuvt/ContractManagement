@@ -7,23 +7,60 @@
                           Value="@UserId"
                           ValueChanged="OnUserIdChanged"
                           Variant="Variant.Outlined"
-                          Required="true" />
+                          Required="true"
+                          RequiredError="Vui lòng nhập User ID tài khoản."
+                          FullWidth="true" />
         </MudItem>
     }
 
+    @* ============================
+       THÔNG TIN CÁ NHÂN
+       ============================ *@
+
+    <MudItem xs="12">
+        <MudText Typo="Typo.subtitle1">
+            Thông tin cá nhân
+        </MudText>
+    </MudItem>
+
     <MudItem xs="12" md="6">
         <MudTextField T="string"
-                      Label="CCCD"
+                      Label="Số CCCD"
                       Value="@CitizenId"
                       ValueChanged="OnCitizenIdChanged"
-                      Variant="Variant.Outlined" />
+                      Variant="Variant.Outlined"
+                      MaxLength="20"
+                      FullWidth="true" />
+    </MudItem>
+
+    <MudItem xs="12" md="6">
+        <MudDatePicker Label="Ngày cấp CCCD"
+                       Date="@CitizenIdIssuedDate"
+                       DateChanged="OnCitizenIdIssuedDateChanged"
+                       DateFormat="dd/MM/yyyy"
+                       Variant="Variant.Outlined"
+                       Clearable="true"
+                       Style="width:100%;" />
     </MudItem>
 
     <MudItem xs="12" md="6">
         <MudDatePicker Label="Ngày sinh"
                        Date="@DateOfBirth"
                        DateChanged="OnDateOfBirthChanged"
-                       Variant="Variant.Outlined" />
+                       DateFormat="dd/MM/yyyy"
+                       Variant="Variant.Outlined"
+                       Clearable="true"
+                       Style="width:100%;" />
+    </MudItem>
+
+    <MudItem xs="12" md="6">
+        <MudTextField T="string"
+                      Label="Khu vực"
+                      Value="@AreaCode"
+                      ValueChanged="OnAreaCodeChanged"
+                      Variant="Variant.Outlined"
+                      MaxLength="100"
+                      FullWidth="true" />
     </MudItem>
 
     <MudItem xs="12">
@@ -32,15 +69,22 @@
                       Value="@Address"
                       ValueChanged="OnAddressChanged"
                       Variant="Variant.Outlined"
-                      Lines="2" />
+                      Lines="2"
+                      MaxLength="500"
+                      FullWidth="true" />
     </MudItem>
 
-    <MudItem xs="12" md="6">
-        <MudTextField T="string"
-                      Label="Khu vực"
-                      Value="@AreaCode"
-                      ValueChanged="OnAreaCodeChanged"
-                      Variant="Variant.Outlined" />
+    @* ============================
+       THÔNG TIN PHƯƠNG TIỆN
+       ============================ *@
+
+    <MudItem xs="12">
+        <MudDivider Class="my-2" />
+
+        <MudText Typo="Typo.subtitle1"
+                 Class="mt-2">
+            Thông tin phương tiện
+        </MudText>
     </MudItem>
 
     <MudItem xs="12" md="6">
@@ -48,7 +92,9 @@
                       Label="Biển số xe"
                       Value="@VehiclePlate"
                       ValueChanged="OnVehiclePlateChanged"
-                      Variant="Variant.Outlined" />
+                      Variant="Variant.Outlined"
+                      MaxLength="30"
+                      FullWidth="true" />
     </MudItem>
 
     <MudItem xs="12" md="6">
@@ -56,15 +102,32 @@
                       Label="Số hiệu xe"
                       Value="@VehicleCode"
                       ValueChanged="OnVehicleCodeChanged"
-                      Variant="Variant.Outlined" />
+                      Variant="Variant.Outlined"
+                      MaxLength="50"
+                      FullWidth="true" />
     </MudItem>
 
-    <MudItem xs="12" md="6">
+    <MudItem xs="12">
         <MudTextField T="string"
                       Label="Loại xe"
                       Value="@VehicleType"
                       ValueChanged="OnVehicleTypeChanged"
-                      Variant="Variant.Outlined" />
+                      Variant="Variant.Outlined"
+                      MaxLength="100"
+                      FullWidth="true" />
+    </MudItem>
+
+    @* ============================
+       GIẤY PHÉP LÁI XE
+       ============================ *@
+
+    <MudItem xs="12">
+        <MudDivider Class="my-2" />
+
+        <MudText Typo="Typo.subtitle1"
+                 Class="mt-2">
+            Giấy phép lái xe
+        </MudText>
     </MudItem>
 
     <MudItem xs="12" md="6">
@@ -72,7 +135,9 @@
                       Label="Số GPLX"
                       Value="@DriverLicenseNumber"
                       ValueChanged="OnDriverLicenseNumberChanged"
-                      Variant="Variant.Outlined" />
+                      Variant="Variant.Outlined"
+                      MaxLength="50"
+                      FullWidth="true" />
     </MudItem>
 
     <MudItem xs="12" md="6">
@@ -80,96 +145,217 @@
                       Label="Hạng GPLX"
                       Value="@DriverLicenseClass"
                       ValueChanged="OnDriverLicenseClassChanged"
-                      Variant="Variant.Outlined" />
+                      Variant="Variant.Outlined"
+                      MaxLength="20"
+                      FullWidth="true" />
     </MudItem>
 
     <MudItem xs="12" md="6">
         <MudDatePicker Label="Ngày cấp GPLX"
                        Date="@DriverLicenseIssuedDate"
                        DateChanged="OnDriverLicenseIssuedDateChanged"
-                       Variant="Variant.Outlined" />
+                       DateFormat="dd/MM/yyyy"
+                       Variant="Variant.Outlined"
+                       Clearable="true"
+                       Style="width:100%;" />
     </MudItem>
 
     <MudItem xs="12" md="6">
         <MudDatePicker Label="Ngày hết hạn GPLX"
                        Date="@DriverLicenseExpiryDate"
                        DateChanged="OnDriverLicenseExpiryDateChanged"
-                       Variant="Variant.Outlined" />
+                       DateFormat="dd/MM/yyyy"
+                       Variant="Variant.Outlined"
+                       Clearable="true"
+                       Style="width:100%;" />
     </MudItem>
 </MudGrid>
 
 @code {
-    [Parameter] public bool ShowUserId { get; set; }
+    [Parameter]
+    public bool ShowUserId { get; set; }
 
-    [Parameter] public string UserId { get; set; } = string.Empty;
-    [Parameter] public EventCallback<string> UserIdChanged { get; set; }
+    [Parameter]
+    public string UserId { get; set; } = string.Empty;
 
-    [Parameter] public string? CitizenId { get; set; }
-    [Parameter] public EventCallback<string?> CitizenIdChanged { get; set; }
+    [Parameter]
+    public EventCallback<string> UserIdChanged { get; set; }
 
-    [Parameter] public DateTime? DateOfBirth { get; set; }
-    [Parameter] public EventCallback<DateTime?> DateOfBirthChanged { get; set; }
+    // Thông tin cá nhân
 
-    [Parameter] public string? Address { get; set; }
-    [Parameter] public EventCallback<string?> AddressChanged { get; set; }
+    [Parameter]
+    public string? CitizenId { get; set; }
 
-    [Parameter] public string? AreaCode { get; set; }
-    [Parameter] public EventCallback<string?> AreaCodeChanged { get; set; }
+    [Parameter]
+    public EventCallback<string?> CitizenIdChanged { get; set; }
 
-    [Parameter] public string? VehiclePlate { get; set; }
-    [Parameter] public EventCallback<string?> VehiclePlateChanged { get; set; }
+    [Parameter]
+    public DateTime? CitizenIdIssuedDate { get; set; }
 
-    [Parameter] public string? VehicleCode { get; set; }
-    [Parameter] public EventCallback<string?> VehicleCodeChanged { get; set; }
+    [Parameter]
+    public EventCallback<DateTime?> CitizenIdIssuedDateChanged { get; set; }
 
-    [Parameter] public string? VehicleType { get; set; }
-    [Parameter] public EventCallback<string?> VehicleTypeChanged { get; set; }
+    [Parameter]
+    public DateTime? DateOfBirth { get; set; }
 
-    [Parameter] public string? DriverLicenseNumber { get; set; }
-    [Parameter] public EventCallback<string?> DriverLicenseNumberChanged { get; set; }
+    [Parameter]
+    public EventCallback<DateTime?> DateOfBirthChanged { get; set; }
 
-    [Parameter] public string? DriverLicenseClass { get; set; }
-    [Parameter] public EventCallback<string?> DriverLicenseClassChanged { get; set; }
+    [Parameter]
+    public string? Address { get; set; }
 
-    [Parameter] public DateTime? DriverLicenseIssuedDate { get; set; }
-    [Parameter] public EventCallback<DateTime?> DriverLicenseIssuedDateChanged { get; set; }
+    [Parameter]
+    public EventCallback<string?> AddressChanged { get; set; }
 
-    [Parameter] public DateTime? DriverLicenseExpiryDate { get; set; }
-    [Parameter] public EventCallback<DateTime?> DriverLicenseExpiryDateChanged { get; set; }
+    [Parameter]
+    public string? AreaCode { get; set; }
 
-    private Task OnUserIdChanged(string value) =>
-        UserIdChanged.InvokeAsync(value);
+    [Parameter]
+    public EventCallback<string?> AreaCodeChanged { get; set; }
 
-    private Task OnCitizenIdChanged(string? value) =>
-        CitizenIdChanged.InvokeAsync(value);
+    // Thông tin phương tiện
 
-    private Task OnDateOfBirthChanged(DateTime? value) =>
-        DateOfBirthChanged.InvokeAsync(value);
+    [Parameter]
+    public string? VehiclePlate { get; set; }
 
-    private Task OnAddressChanged(string? value) =>
-        AddressChanged.InvokeAsync(value);
+    [Parameter]
+    public EventCallback<string?> VehiclePlateChanged { get; set; }
 
-    private Task OnAreaCodeChanged(string? value) =>
-        AreaCodeChanged.InvokeAsync(value);
+    [Parameter]
+    public string? VehicleCode { get; set; }
 
-    private Task OnVehiclePlateChanged(string? value) =>
-        VehiclePlateChanged.InvokeAsync(value);
+    [Parameter]
+    public EventCallback<string?> VehicleCodeChanged { get; set; }
 
-    private Task OnVehicleCodeChanged(string? value) =>
-        VehicleCodeChanged.InvokeAsync(value);
+    [Parameter]
+    public string? VehicleType { get; set; }
 
-    private Task OnVehicleTypeChanged(string? value) =>
-        VehicleTypeChanged.InvokeAsync(value);
+    [Parameter]
+    public EventCallback<string?> VehicleTypeChanged { get; set; }
 
-    private Task OnDriverLicenseNumberChanged(string? value) =>
-        DriverLicenseNumberChanged.InvokeAsync(value);
+    // Giấy phép lái xe
 
-    private Task OnDriverLicenseClassChanged(string? value) =>
-        DriverLicenseClassChanged.InvokeAsync(value);
+    [Parameter]
+    public string? DriverLicenseNumber { get; set; }
 
-    private Task OnDriverLicenseIssuedDateChanged(DateTime? value) =>
-        DriverLicenseIssuedDateChanged.InvokeAsync(value);
+    [Parameter]
+    public EventCallback<string?> DriverLicenseNumberChanged { get; set; }
 
-    private Task OnDriverLicenseExpiryDateChanged(DateTime? value) =>
-        DriverLicenseExpiryDateChanged.InvokeAsync(value);
+    [Parameter]
+    public string? DriverLicenseClass { get; set; }
+
+    [Parameter]
+    public EventCallback<string?> DriverLicenseClassChanged { get; set; }
+
+    [Parameter]
+    public DateTime? DriverLicenseIssuedDate { get; set; }
+
+    [Parameter]
+    public EventCallback<DateTime?> DriverLicenseIssuedDateChanged { get; set; }
+
+    [Parameter]
+    public DateTime? DriverLicenseExpiryDate { get; set; }
+
+    [Parameter]
+    public EventCallback<DateTime?> DriverLicenseExpiryDateChanged { get; set; }
+
+    private async Task OnUserIdChanged(string value)
+    {
+        UserId = value;
+
+        await UserIdChanged.InvokeAsync(value);
+    }
+
+    private async Task OnCitizenIdChanged(string? value)
+    {
+        CitizenId = value;
+
+        await CitizenIdChanged.InvokeAsync(value);
+    }
+
+    private async Task OnCitizenIdIssuedDateChanged(
+        DateTime? value)
+    {
+        CitizenIdIssuedDate = value;
+
+        await CitizenIdIssuedDateChanged.InvokeAsync(value);
+    }
+
+    private async Task OnDateOfBirthChanged(
+        DateTime? value)
+    {
+        DateOfBirth = value;
+
+        await DateOfBirthChanged.InvokeAsync(value);
+    }
+
+    private async Task OnAddressChanged(string? value)
+    {
+        Address = value;
+
+        await AddressChanged.InvokeAsync(value);
+    }
+
+    private async Task OnAreaCodeChanged(string? value)
+    {
+        AreaCode = value;
+
+        await AreaCodeChanged.InvokeAsync(value);
+    }
+
+    private async Task OnVehiclePlateChanged(
+        string? value)
+    {
+        VehiclePlate = value;
+
+        await VehiclePlateChanged.InvokeAsync(value);
+    }
+
+    private async Task OnVehicleCodeChanged(
+        string? value)
+    {
+        VehicleCode = value;
+
+        await VehicleCodeChanged.InvokeAsync(value);
+    }
+
+    private async Task OnVehicleTypeChanged(
+        string? value)
+    {
+        VehicleType = value;
+
+        await VehicleTypeChanged.InvokeAsync(value);
+    }
+
+    private async Task OnDriverLicenseNumberChanged(
+        string? value)
+    {
+        DriverLicenseNumber = value;
+
+        await DriverLicenseNumberChanged.InvokeAsync(value);
+    }
+
+    private async Task OnDriverLicenseClassChanged(
+        string? value)
+    {
+        DriverLicenseClass = value;
+
+        await DriverLicenseClassChanged.InvokeAsync(value);
+    }
+
+    private async Task OnDriverLicenseIssuedDateChanged(
+        DateTime? value)
+    {
+        DriverLicenseIssuedDate = value;
+
+        await DriverLicenseIssuedDateChanged.InvokeAsync(value);
+    }
+
+    private async Task OnDriverLicenseExpiryDateChanged(
+        DateTime? value)
+    {
+        DriverLicenseExpiryDate = value;
+
+        await DriverLicenseExpiryDateChanged.InvokeAsync(value);
+    }
 }

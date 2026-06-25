@@ -1,6 +1,7 @@
 using ContractManagement.Application.Abstractions;
 using ContractManagement.Application.Admins.DriverAccounts;
 using ContractManagement.Application.Admins.DriverProfiles;
+using ContractManagement.Domain.Drivers;
 using ContractManagement.Domain.Identity;
 using ContractManagement.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
@@ -22,10 +23,12 @@ public sealed class DriverAccountService : IDriverAccountService
     }
 
     public async Task<string> CreateAsync(
-        CreateDriverAccountRequest request,
-        CancellationToken cancellationToken = default)
+    CreateDriverAccountRequest request,
+    CancellationToken cancellationToken = default)
     {
-        await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+        await using var dbContext =
+            await _dbContextFactory.CreateDbContextAsync(
+                cancellationToken);
 
         var userName = request.UserName.Trim();
 
@@ -35,20 +38,51 @@ public sealed class DriverAccountService : IDriverAccountService
                 "Tên đăng nhập không được để trống.");
         }
 
-        var existingUser =
-            await _userManager.FindByNameAsync(userName);
+        if (request.CompanyProfileId == Guid.Empty)
+        {
+            throw new InvalidOperationException(
+                "Vui lòng chọn công ty quản lý tài xế.");
+        }
 
-        if (existingUser is not null)
+        var companyExists =
+            await dbContext.CompanyProfiles
+                .AsNoTracking()
+                .AnyAsync(
+                    x =>
+                        x.Id == request.CompanyProfileId &&
+                        x.IsActive,
+                    cancellationToken);
+
+        if (!companyExists)
+        {
+            throw new InvalidOperationException(
+                "Công ty không tồn tại hoặc đã ngừng hoạt động.");
+        }
+
+        var normalizedUserName =
+            _userManager.NormalizeName(userName);
+
+        var existingUser =
+            await dbContext.Users
+                .AsNoTracking()
+                .AnyAsync(
+                    x => x.NormalizedUserName == normalizedUserName,
+                    cancellationToken);
+
+        if (existingUser)
         {
             throw new InvalidOperationException(
                 "Tên đăng nhập đã tồn tại.");
         }
 
-        if (!string.IsNullOrWhiteSpace(request.EmployeeCode))
+        var employeeCode =
+            NullIfEmpty(request.EmployeeCode);
+
+        if (employeeCode is not null)
         {
             var employeeCodeExists =
                 await dbContext.Users.AnyAsync(
-                    x => x.EmployeeCode == request.EmployeeCode,
+                    x => x.EmployeeCode == employeeCode,
                     cancellationToken);
 
             if (employeeCodeExists)
@@ -58,11 +92,14 @@ public sealed class DriverAccountService : IDriverAccountService
             }
         }
 
-        if (!string.IsNullOrWhiteSpace(request.PhoneNumber))
+        var phoneNumber =
+            NullIfEmpty(request.PhoneNumber);
+
+        if (phoneNumber is not null)
         {
             var phoneExists =
                 await dbContext.Users.AnyAsync(
-                    x => x.PhoneNumber == request.PhoneNumber,
+                    x => x.PhoneNumber == phoneNumber,
                     cancellationToken);
 
             if (phoneExists)
@@ -76,14 +113,11 @@ public sealed class DriverAccountService : IDriverAccountService
         {
             UserName = userName,
             FullName = request.FullName.Trim(),
-            EmployeeCode = request.EmployeeCode?.Trim(),
-            PhoneNumber = request.PhoneNumber?.Trim(),
-            Email = request.Email?.Trim(),
+            EmployeeCode = employeeCode,
+            PhoneNumber = phoneNumber,
+            Email = NullIfEmpty(request.Email),
             IsActive = true,
-
-            // Bắt buộc đổi trong lần đăng nhập đầu tiên.
-            MustChangePassword = true,
-
+            MustChangePassword = request.MustChangePassword,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -101,23 +135,56 @@ public sealed class DriverAccountService : IDriverAccountService
                         x => x.Description)));
         }
 
-        var roleResult =
-            await _userManager.AddToRoleAsync(
-                user,
-                "Driver");
-
-        if (!roleResult.Succeeded)
+        try
         {
-            await _userManager.DeleteAsync(user);
+            var roleResult =
+                await _userManager.AddToRoleAsync(
+                    user,
+                    "Driver");
 
-            throw new InvalidOperationException(
-                string.Join(
-                    "; ",
-                    roleResult.Errors.Select(
-                        x => x.Description)));
+            if (!roleResult.Succeeded)
+            {
+                throw new InvalidOperationException(
+                    string.Join(
+                        "; ",
+                        roleResult.Errors.Select(
+                            x => x.Description)));
+            }
+
+            /*
+             * UserManager sử dụng DbContext riêng.
+             * Sau khi user được tạo, tạo DriverProfile bằng factory context.
+             */
+            dbContext.DriverProfiles.Add(
+                new DriverProfile
+                {
+                    UserId = user.Id,
+                    CompanyProfileId = request.CompanyProfileId,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                });
+
+            await dbContext.SaveChangesAsync(
+                cancellationToken);
+
+            return user.Id;
         }
+        catch
+        {
+            /*
+             * Nếu tạo role hoặc profile thất bại,
+             * xóa tài khoản vừa tạo để không sinh dữ liệu rác.
+             */
+            await _userManager.DeleteAsync(user);
+            throw;
+        }
+    }
 
-        return user.Id;
+    private static string? NullIfEmpty(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value)
+            ? null
+            : value.Trim();
     }
 
     public async Task UpdateAsync(
@@ -498,78 +565,191 @@ public sealed class DriverAccountService : IDriverAccountService
     string userId,
     CancellationToken cancellationToken = default)
     {
-        await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-
-        var account = await dbContext.Users
-            .AsNoTracking()
-            .Where(x => x.Id == userId)
-            .Select(x => new DriverAccountDetailDto
-            {
-                Id = x.Id,
-                UserName = x.UserName ?? string.Empty,
-                FullName = x.FullName,
-                EmployeeCode = x.EmployeeCode,
-                PhoneNumber = x.PhoneNumber,
-                Email = x.Email,
-                IsActive = x.IsActive,
-                MustChangePassword = x.MustChangePassword,
-                CreatedAt = x.CreatedAt,
-                UpdatedAt = x.UpdatedAt
-            })
-            .FirstOrDefaultAsync(cancellationToken);
-
-        if (account is null)
+        if (string.IsNullOrWhiteSpace(userId))
             return null;
 
-        account.Profile = await dbContext.DriverProfiles
+        await using var dbContext =
+            await _dbContextFactory.CreateDbContextAsync(
+                cancellationToken);
+
+        var detail = await dbContext.Users
             .AsNoTracking()
-            .Where(x => x.UserId == userId)
-            .Select(x => new DriverProfileDto
+            .Where(user => user.Id == userId)
+            .Select(user => new DriverAccountDetailDto
             {
-                Id = x.Id,
-                UserId = x.UserId,
+                UserId = user.Id,
+                UserName = user.UserName ?? string.Empty,
+                FullName = user.FullName,
+                EmployeeCode = user.EmployeeCode,
+                PhoneNumber = user.PhoneNumber,
+                Email = user.Email,
+                IsActive = user.IsActive,
+                MustChangePassword = user.MustChangePassword,
+                CreatedAt = user.CreatedAt,
+                UpdatedAt = user.UpdatedAt,
 
-                CitizenId = x.CitizenId,
-                DateOfBirth = x.DateOfBirth,
-                Address = x.Address,
-                AreaCode = x.AreaCode,
-                VehiclePlate = x.VehiclePlate,
-                VehicleCode = x.VehicleCode,
-                VehicleType = x.VehicleType,
+                /*
+                 * Quan trọng:
+                 * Không có DriverProfile thì phải trả Profile = null.
+                 */
+                Profile = user.DriverProfile == null
+                    ? null
+                    : new DriverProfileDto
+                    {
+                        Id = user.DriverProfile.Id,
+                        UserId = user.DriverProfile.UserId,
 
-                DriverLicenseNumber =
-                    x.DriverLicenseNumber,
+                        UserName =
+                            user.UserName ?? string.Empty,
 
-                DriverLicenseClass =
-                    x.DriverLicenseClass,
+                        DriverCode =
+                            user.EmployeeCode ?? string.Empty,
 
-                DriverLicenseIssuedDate =
-                    x.DriverLicenseIssuedDate,
+                        FullName =
+                            user.FullName,
 
-                DriverLicenseExpiryDate =
-                    x.DriverLicenseExpiryDate,
+                        CitizenId =
+                            user.DriverProfile.CitizenId,
 
-                AvatarUrl = x.AvatarUrl,
+                        CitizenIdIssuedDate =
+                            user.DriverProfile.CitizenIdIssuedDate,
 
-                CitizenIdFrontUrl =
-                    x.CitizenIdFrontUrl,
+                        DateOfBirth =
+                            user.DriverProfile.DateOfBirth,
 
-                CitizenIdBackUrl =
-                    x.CitizenIdBackUrl,
+                        Address =
+                            user.DriverProfile.Address,
 
-                DriverLicenseFrontUrl =
-                    x.DriverLicenseFrontUrl,
+                        AreaCode =
+                            user.DriverProfile.AreaCode,
 
-                DriverLicenseBackUrl =
-                    x.DriverLicenseBackUrl,
+                        CompanyProfileId =
+                            user.DriverProfile.CompanyProfileId,
 
-                IsActive = x.IsActive,
-                CreatedAt = x.CreatedAt,
-                UpdatedAt = x.UpdatedAt
+                        CompanyName =
+                            user.DriverProfile.CompanyProfile.CompanyName,
+
+                        CompanyTaxCode =
+                            user.DriverProfile.CompanyProfile.TaxCode,
+
+                        VehiclePlate =
+                            user.DriverProfile.VehiclePlate,
+
+                        VehicleCode =
+                            user.DriverProfile.VehicleCode,
+
+                        VehicleType =
+                            user.DriverProfile.VehicleType,
+
+                        DriverLicenseNumber =
+                            user.DriverProfile.DriverLicenseNumber,
+
+                        DriverLicenseClass =
+                            user.DriverProfile.DriverLicenseClass,
+
+                        DriverLicenseIssuedDate =
+                            user.DriverProfile.DriverLicenseIssuedDate,
+
+                        DriverLicenseExpiryDate =
+                            user.DriverProfile.DriverLicenseExpiryDate,
+
+                        AvatarUrl =
+                            user.DriverProfile.AvatarUrl,
+
+                        CitizenIdFrontUrl =
+                            user.DriverProfile.CitizenIdFrontUrl,
+
+                        CitizenIdBackUrl =
+                            user.DriverProfile.CitizenIdBackUrl,
+
+                        DriverLicenseFrontUrl =
+                            user.DriverProfile.DriverLicenseFrontUrl,
+
+                        DriverLicenseBackUrl =
+                            user.DriverProfile.DriverLicenseBackUrl,
+
+                        IsActive =
+                            user.DriverProfile.IsActive,
+
+                        CreatedAt =
+                            user.DriverProfile.CreatedAt,
+
+                        UpdatedAt =
+                            user.DriverProfile.UpdatedAt
+                    },
+
+                /*
+                 * Công ty cũng phải null nếu chưa có DriverProfile.
+                 */
+                Company = user.DriverProfile == null
+                    ? null
+                    : new DriverCompanyProfileDto
+                    {
+                        Id =
+                            user.DriverProfile.CompanyProfile.Id,
+
+                        CompanyName =
+                            user.DriverProfile.CompanyProfile.CompanyName,
+
+                        TaxCode =
+                            user.DriverProfile.CompanyProfile.TaxCode,
+
+                        BusinessLicenseNumber =
+                            user.DriverProfile.CompanyProfile
+                                .BusinessLicenseNumber,
+
+                        Address =
+                            user.DriverProfile.CompanyProfile.Address,
+
+                        PhoneNumber =
+                            user.DriverProfile.CompanyProfile.PhoneNumber,
+
+                        Email =
+                            user.DriverProfile.CompanyProfile.Email,
+
+                        RepresentativeName =
+                            user.DriverProfile.CompanyProfile
+                                .RepresentativeName,
+
+                        RepresentativePosition =
+                            user.DriverProfile.CompanyProfile
+                                .RepresentativePosition,
+
+                        RepresentativeCitizenId =
+                            user.DriverProfile.CompanyProfile
+                                .RepresentativeCitizenId,
+
+                        RepresentativeCitizenIdIssuedDate =
+                            user.DriverProfile.CompanyProfile
+                                .RepresentativeCitizenIdIssuedDate,
+
+                        RepresentativeCitizenIdIssuedPlace =
+                            user.DriverProfile.CompanyProfile
+                                .RepresentativeCitizenIdIssuedPlace,
+
+                        BankAccountNumber =
+                            user.DriverProfile.CompanyProfile
+                                .BankAccountNumber,
+
+                        BankName =
+                            user.DriverProfile.CompanyProfile.BankName,
+
+                        IsActive =
+                            user.DriverProfile.CompanyProfile.IsActive,
+
+                        IsDefault =
+                            user.DriverProfile.CompanyProfile.IsDefault,
+
+                        CreatedAt =
+                            user.DriverProfile.CompanyProfile.CreatedAt,
+
+                        UpdatedAt =
+                            user.DriverProfile.CompanyProfile.UpdatedAt
+                    }
             })
             .FirstOrDefaultAsync(cancellationToken);
 
-        return account;
+        return detail;
     }
 
     public async Task RequirePasswordChangeAsync(

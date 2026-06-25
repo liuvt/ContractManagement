@@ -3,6 +3,7 @@
 @inject IDriverAccountService DriverAccountService
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
+@inject ICompanyProfileService CompanyProfileService
 
 <PageTitle>Thêm tài khoản tài xế</PageTitle>
 
@@ -11,6 +12,33 @@
 
 <MudPaper Outlined="true"
           Class="pa-4">
+
+    <MudItem xs="12">
+        <MudSelect T="Guid"
+                   Label="Công ty quản lý"
+                   @bind-Value="_model.CompanyProfileId"
+                   Variant="Variant.Outlined"
+                   Required="true"
+                   RequiredError="Vui lòng chọn công ty."
+                   FullWidth="true">
+
+            @foreach (var company in _companies)
+            {
+                <MudSelectItem T="Guid"
+                               Value="@company.Id">
+
+                    @company.CompanyName
+                    (@company.TaxCode)
+
+                    @if (company.IsDefault)
+                    {
+                        <span> - Mặc định</span>
+                    }
+                </MudSelectItem>
+            }
+
+        </MudSelect>
+    </MudItem>
 
     <MudForm @ref="_form">
 
@@ -100,6 +128,32 @@
     private bool _saving;
 
     private readonly CreateDriverAccountRequest _model = new();
+    private IReadOnlyList<CompanyProfileOptionDto> _companies =
+    Array.Empty<CompanyProfileOptionDto>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _companies =
+                await CompanyProfileService.GetActiveOptionsAsync();
+
+            var defaultCompany =
+                _companies.FirstOrDefault(x => x.IsDefault);
+
+            if (defaultCompany is not null)
+            {
+                _model.CompanyProfileId =
+                    defaultCompany.Id;
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(
+                $"Không thể tải danh sách công ty: {ex.Message}",
+                Severity.Error);
+        }
+    }
 
     private async Task SaveAsync()
     {
