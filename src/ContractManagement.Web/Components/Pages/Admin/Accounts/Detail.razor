@@ -1,0 +1,952 @@
+﻿@page "/admin/accounts/{UserId}"
+@attribute [Authorize(Roles = "Admin")]
+
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject UserManager<ApplicationUser> UserManager
+@inject NavigationManager Navigation
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<PageTitle>Chi tiết tài khoản</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="py-6">
+    <MudStack Row="true"
+              AlignItems="AlignItems.Center"
+              Spacing="2"
+              Class="mb-5">
+
+        <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
+                       Href="/admin/accounts" />
+
+        <div>
+            <MudText Typo="Typo.h4">
+                Chi tiết tài khoản
+            </MudText>
+
+            <MudText Typo="Typo.body2"
+                     Color="Color.Secondary">
+                Cập nhật tài khoản và hồ sơ doanh nghiệp
+            </MudText>
+        </div>
+    </MudStack>
+
+    @if (_loading)
+    {
+        <MudProgressLinear Indeterminate="true"
+                           Color="Color.Primary" />
+    }
+    else if (_user is null)
+    {
+        <MudAlert Severity="Severity.Error">
+            Không tìm thấy tài khoản.
+        </MudAlert>
+    }
+    else
+    {
+        <MudTabs Elevation="1"
+                 Rounded="true"
+                 PanelClass="pa-5">
+
+            <MudTabPanel Text="Thông tin tài khoản"
+                         Icon="@Icons.Material.Filled.Person">
+
+                <MudForm @ref="_accountForm">
+                    <MudGrid>
+                        <MudItem xs="12" md="6">
+                            <MudTextField T="string"
+                                          Label="Tên đăng nhập"
+                                          Value="@_user.UserName"
+                                          ReadOnly="true"
+                                          Variant="Variant.Outlined"
+                                          FullWidth="true" />
+                        </MudItem>
+
+                        <MudItem xs="12" md="6">
+                            <MudTextField T="string"
+                                          Label="Mã nhân viên"
+                                          @bind-Value="_accountModel.EmployeeCode"
+                                          Variant="Variant.Outlined"
+                                          FullWidth="true" />
+                        </MudItem>
+
+                        <MudItem xs="12">
+                            <MudTextField T="string"
+                                          Label="Họ và tên"
+                                          @bind-Value="_accountModel.FullName"
+                                          Variant="Variant.Outlined"
+                                          Required="true"
+                                          RequiredError="Vui lòng nhập họ và tên."
+                                          FullWidth="true" />
+                        </MudItem>
+
+                        <MudItem xs="12" md="6">
+                            <MudTextField T="string"
+                                          Label="Số điện thoại"
+                                          @bind-Value="_accountModel.PhoneNumber"
+                                          Variant="Variant.Outlined"
+                                          FullWidth="true" />
+                        </MudItem>
+
+                        <MudItem xs="12" md="6">
+                            <MudTextField T="string"
+                                          Label="Email"
+                                          @bind-Value="_accountModel.Email"
+                                          InputType="InputType.Email"
+                                          Variant="Variant.Outlined"
+                                          FullWidth="true" />
+                        </MudItem>
+
+                        <MudItem xs="12" md="6">
+                            <MudSwitch T="bool"
+                                       @bind-Value="_accountModel.IsActive"
+                                       Color="Color.Success"
+                                       Label="Tài khoản đang hoạt động" />
+                        </MudItem>
+
+                        <MudItem xs="12" md="6">
+                            <MudSwitch T="bool"
+                                       @bind-Value="_accountModel.MustChangePassword"
+                                       Color="Color.Warning"
+                                       Label="Bắt buộc đổi mật khẩu" />
+                        </MudItem>
+                    </MudGrid>
+
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Save"
+                               Disabled="@_savingAccount"
+                               OnClick="SaveAccountAsync"
+                               Class="mt-5">
+
+                        @(_savingAccount
+                                            ? "Đang lưu..."
+                                            : "Lưu tài khoản")
+                </MudButton>
+            </MudForm>
+        </MudTabPanel>
+
+            <MudTabPanel Text="Hồ sơ doanh nghiệp"
+                         Icon="@Icons.Material.Filled.Business">
+
+                <MudStack Row="true"
+                          Justify="Justify.SpaceBetween"
+                          AlignItems="AlignItems.Center"
+                          Class="mb-4">
+
+                    <MudText Typo="Typo.h6">
+                        Danh sách hồ sơ
+                    </MudText>
+
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Add"
+                               OnClick="OpenCreateCompany">
+                        Thêm hồ sơ
+                    </MudButton>
+                </MudStack>
+
+            @if (_companies.Count == 0)
+                {
+                    <MudAlert Severity="Severity.Info">
+                        Tài khoản chưa có hồ sơ doanh nghiệp.
+                    </MudAlert>
+                }
+                else
+                {
+                    <MudGrid>
+                        @foreach (var company in _companies)
+                        {
+                            <MudItem xs="12" md="6">
+                                <MudCard Elevation="1">
+                                    <MudCardContent>
+                                        <MudStack Row="true"
+                                                  Justify="Justify.SpaceBetween"
+                                                  AlignItems="AlignItems.Start">
+
+                                            <div>
+                                                <MudText Typo="Typo.h6">
+                                                    @company.CompanyName
+                                                </MudText>
+
+                                                <MudText Typo="Typo.body2"
+                                                         Color="Color.Secondary">
+                                                    MST: @company.TaxCode
+                                                </MudText>
+                                            </div>
+
+                                            @if (company.IsDefault)
+                                            {
+                                                <MudChip T="string"
+                                                         Size="Size.Small"
+                                                         Color="Color.Primary">
+                                                    Mặc định
+                                                </MudChip>
+                                            }
+                                    </MudStack>
+
+                                    <MudDivider Class="my-3" />
+
+                                    <MudText Typo="Typo.body2">
+                                        <b>Đại diện:</b>
+                                        @company.RepresentativeName
+                                    </MudText>
+
+                                    <MudText Typo="Typo.body2">
+                                        <b>Chức vụ:</b>
+                                        @(company.RepresentativePosition
+                                                                        ?? "Chưa cập nhật")
+                                                                                       </MudText>
+
+                                    <MudText Typo="Typo.body2">
+                                        <b>Điện thoại:</b>
+                                        @(company.PhoneNumber
+                                                                        ?? "Chưa cập nhật")
+                            </MudText>
+
+                                        <MudText Typo="Typo.body2">
+                                            <b>Địa chỉ:</b>
+                                            @company.Address
+                                        </MudText>
+                                    </MudCardContent>
+
+                                    <MudCardActions>
+                                        <MudButton Variant="Variant.Text"
+                                                   StartIcon="@Icons.Material.Filled.Edit"
+                                                   OnClick="@(() => OpenEditCompany(company))">
+                                            Cập nhật
+                                        </MudButton>
+
+                            @if (!company.IsDefault)
+                                        {
+                                            <MudButton Variant="Variant.Text"
+                                                       StartIcon="@Icons.Material.Filled.Star"
+                                                       OnClick="@(() => SetDefaultAsync(company.Id))">
+                                                Đặt mặc định
+                                            </MudButton>
+                                        }
+
+                                        <MudSpacer />
+
+                                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                       Color="Color.Error"
+                                                       OnClick="@(() => DeleteCompanyAsync(company))" />
+                                    </MudCardActions>
+                                </MudCard>
+                            </MudItem>
+                        }
+                    </MudGrid>
+                }
+            </MudTabPanel>
+        </MudTabs>
+    }
+
+    @if (_companyEditorVisible)
+    {
+        <div class="company-editor-overlay">
+            <MudPaper Class="company-editor-card pa-6"
+                      Elevation="16">
+
+                <MudStack Row="true"
+                          Justify="Justify.SpaceBetween"
+                          AlignItems="AlignItems.Center"
+                          Class="mb-5">
+
+                    <MudText Typo="Typo.h5">
+                        @(_editingCompanyId.HasValue
+                                            ? "Cập nhật hồ sơ doanh nghiệp"
+                                            : "Thêm hồ sơ doanh nghiệp")
+                                                                    </MudText>
+
+                    <MudIconButton Icon="@Icons.Material.Filled.Close"
+                                   OnClick="CloseCompanyEditor" />
+                </MudStack>
+
+                <MudForm @ref="_companyForm">
+                    <MudGrid>
+                        <MudItem xs="12">
+                            <MudTextField T="string"
+                                          Label="Tên doanh nghiệp"
+                                          @bind-Value="_companyModel.CompanyName"
+                                          Variant="Variant.Outlined"
+                                          Required="true"
+                                          RequiredError="Vui lòng nhập tên doanh nghiệp."
+                                          FullWidth="true" />
+                        </MudItem>
+
+                        <MudItem xs="12" md="6">
+                            <MudTextField T="string"
+                                          Label="Mã số thuế"
+                                          @bind-Value="_companyModel.TaxCode"
+                                          Variant="Variant.Outlined"
+                                          Required="true"
+                                          RequiredError="Vui lòng nhập mã số thuế."
+                                          FullWidth="true" />
+                        </MudItem>
+
+                        <MudItem xs="12" md="6">
+                            <MudTextField T="string"
+                                          Label="Số giấy phép"
+                                          @bind-Value="_companyModel.BusinessLicenseNumber"
+                                          Variant="Variant.Outlined"
+                                          FullWidth="true" />
+                        </MudItem>
+
+                        <MudItem xs="12">
+                            <MudTextField T="string"
+                                          Label="Địa chỉ"
+                                          @bind-Value="_companyModel.Address"
+                                          Variant="Variant.Outlined"
+                                          Required="true"
+                                          Lines="2"
+                                          FullWidth="true" />
+                        </MudItem>
+
+                        <MudItem xs="12" md="6">
+                            <MudTextField T="string"
+                                          Label="Số điện thoại"
+                                          @bind-Value="_companyModel.PhoneNumber"
+                                          Variant="Variant.Outlined"
+                                          FullWidth="true" />
+                        </MudItem>
+
+                        <MudItem xs="12" md="6">
+                            <MudTextField T="string"
+                                          Label="Email"
+                                          @bind-Value="_companyModel.Email"
+                                          InputType="InputType.Email"
+                                          Variant="Variant.Outlined"
+                                          FullWidth="true" />
+                        </MudItem>
+
+                        <MudItem xs="12" md="6">
+                            <MudTextField T="string"
+                                          Label="Người đại diện"
+                                          @bind-Value="_companyModel.RepresentativeName"
+                                          Variant="Variant.Outlined"
+                                          Required="true"
+                                          FullWidth="true" />
+                        </MudItem>
+
+                        <MudItem xs="12" md="6">
+                            <MudTextField T="string"
+                                          Label="Chức vụ"
+                                          @bind-Value="_companyModel.RepresentativePosition"
+                                          Variant="Variant.Outlined"
+                                          FullWidth="true" />
+                        </MudItem>
+
+                        <MudItem xs="12" md="6">
+                            <MudTextField T="string"
+                                          Label="Số CCCD"
+                                          @bind-Value="_companyModel.RepresentativeCitizenId"
+                                          Variant="Variant.Outlined"
+                                          Required="true"
+                                          FullWidth="true" />
+                        </MudItem>
+
+                        <MudItem xs="12" md="6">
+                            <MudDatePicker Label="Ngày cấp CCCD"
+                                           @bind-Date="_companyModel.RepresentativeCitizenIdIssuedDate"
+                                           DateFormat="dd/MM/yyyy"
+                                           Variant="Variant.Outlined"
+                                           FullWidth="true" />
+                        </MudItem>
+
+                        <MudItem xs="12">
+                            <MudTextField T="string"
+                                          Label="Nơi cấp CCCD"
+                                          @bind-Value="_companyModel.RepresentativeCitizenIdIssuedPlace"
+                                          Variant="Variant.Outlined"
+                                          FullWidth="true" />
+                        </MudItem>
+
+                        <MudItem xs="12" md="6">
+                            <MudTextField T="string"
+                                          Label="Số tài khoản"
+                                          @bind-Value="_companyModel.BankAccountNumber"
+                                          Variant="Variant.Outlined"
+                                          FullWidth="true" />
+                        </MudItem>
+
+                        <MudItem xs="12" md="6">
+                            <MudTextField T="string"
+                                          Label="Ngân hàng"
+                                          @bind-Value="_companyModel.BankName"
+                                          Variant="Variant.Outlined"
+                                          FullWidth="true" />
+                        </MudItem>
+
+                        <MudItem xs="12" md="6">
+                            <MudSwitch T="bool"
+                                       @bind-Value="_companyModel.IsActive"
+                                       Label="Đang hoạt động"
+                                       Color="Color.Success" />
+                        </MudItem>
+
+                        <MudItem xs="12" md="6">
+                            <MudSwitch T="bool"
+                                       @bind-Value="_companyModel.IsDefault"
+                                       Label="Hồ sơ mặc định"
+                                       Color="Color.Primary" />
+                        </MudItem>
+                    </MudGrid>
+
+                    <MudStack Row="true"
+                              Justify="Justify.FlexEnd"
+                              Spacing="2"
+                              Class="mt-5">
+
+                        <MudButton Variant="Variant.Text"
+                                   OnClick="CloseCompanyEditor">
+                            Hủy
+                        </MudButton>
+
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.Save"
+                                   Disabled="@_savingCompany"
+                                   OnClick="SaveCompanyAsync">
+
+                            @(_savingCompany
+                                                    ? "Đang lưu..."
+                                                    : "Lưu hồ sơ")
+                    </MudButton>
+                </MudStack>
+            </MudForm>
+        </MudPaper>
+    </div>
+        }
+</MudContainer>
+
+<style>
+    .company-editor-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+        background: rgba(15, 23, 42, 0.65);
+        backdrop-filter: blur(4px);
+    }
+
+    .company-editor-card {
+        width: min(100%, 900px);
+        max-height: calc(100vh - 32px);
+        overflow-y: auto;
+        border-radius: 16px;
+    }
+</style>
+
+@code {
+    [Parameter]
+    public string UserId { get; set; } = string.Empty;
+
+    private MudForm? _accountForm;
+    private MudForm? _companyForm;
+
+    private ApplicationUser? _user;
+
+    private readonly AccountModel _accountModel = new();
+    private readonly CompanyModel _companyModel = new();
+    private readonly List<CompanyProfile> _companies = [];
+
+    private Guid? _editingCompanyId;
+
+    private bool _loading = true;
+    private bool _savingAccount;
+    private bool _savingCompany;
+    private bool _companyEditorVisible;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            _loading = true;
+
+            await using var db =
+                await DbFactory.CreateDbContextAsync();
+
+            _user = await db.Users
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Id == UserId);
+
+            if (_user is null)
+                return;
+
+            _accountModel.FullName = _user.FullName;
+            _accountModel.EmployeeCode = _user.EmployeeCode;
+            _accountModel.PhoneNumber = _user.PhoneNumber;
+            _accountModel.Email = _user.Email;
+            _accountModel.IsActive = _user.IsActive;
+            _accountModel.MustChangePassword =
+                _user.MustChangePassword;
+
+            var companies = await db.CompanyProfiles
+                .AsNoTracking()
+                .Where(x => x.ManagedByUserId == UserId)
+                .OrderByDescending(x => x.IsDefault)
+                .ThenBy(x => x.CompanyName)
+                .ToListAsync();
+
+            _companies.Clear();
+            _companies.AddRange(companies);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(
+                $"Không thể tải thông tin: {ex.Message}",
+                Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task SaveAccountAsync()
+    {
+        if (_savingAccount || _accountForm is null)
+            return;
+
+        await _accountForm.ValidateAsync();
+
+        if (!_accountForm.IsValid)
+            return;
+
+        try
+        {
+            _savingAccount = true;
+
+            var user = await UserManager.FindByIdAsync(UserId);
+
+            if (user is null)
+            {
+                Snackbar.Add(
+                    "Không tìm thấy tài khoản.",
+                    Severity.Error);
+
+                return;
+            }
+
+            user.FullName = _accountModel.FullName.Trim();
+            user.EmployeeCode = NullIfEmpty(_accountModel.EmployeeCode);
+            user.PhoneNumber = NullIfEmpty(_accountModel.PhoneNumber);
+            user.Email = NullIfEmpty(_accountModel.Email);
+            user.IsActive = _accountModel.IsActive;
+            user.MustChangePassword =
+                _accountModel.MustChangePassword;
+            user.UpdatedAt = DateTime.UtcNow;
+
+            var result = await UserManager.UpdateAsync(user);
+
+            if (!result.Succeeded)
+            {
+                ShowIdentityErrors(result.Errors);
+                return;
+            }
+
+            Snackbar.Add(
+                "Cập nhật tài khoản thành công.",
+                Severity.Success);
+
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _savingAccount = false;
+        }
+    }
+
+    private void OpenCreateCompany()
+    {
+        _editingCompanyId = null;
+
+        ResetCompanyModel();
+
+        _companyModel.IsActive = true;
+        _companyModel.IsDefault = _companies.Count == 0;
+
+        _companyEditorVisible = true;
+    }
+
+    private void OpenEditCompany(
+        CompanyProfile company)
+    {
+        _editingCompanyId = company.Id;
+
+        _companyModel.CompanyName = company.CompanyName;
+        _companyModel.TaxCode = company.TaxCode;
+        _companyModel.BusinessLicenseNumber =
+            company.BusinessLicenseNumber;
+        _companyModel.Address = company.Address;
+        _companyModel.PhoneNumber = company.PhoneNumber;
+        _companyModel.Email = company.Email;
+        _companyModel.RepresentativeName =
+            company.RepresentativeName;
+        _companyModel.RepresentativePosition =
+            company.RepresentativePosition;
+        _companyModel.RepresentativeCitizenId =
+            company.RepresentativeCitizenId;
+        _companyModel.RepresentativeCitizenIdIssuedDate =
+            company.RepresentativeCitizenIdIssuedDate;
+        _companyModel.RepresentativeCitizenIdIssuedPlace =
+            company.RepresentativeCitizenIdIssuedPlace;
+        _companyModel.BankAccountNumber =
+            company.BankAccountNumber;
+        _companyModel.BankName = company.BankName;
+        _companyModel.IsActive = company.IsActive;
+        _companyModel.IsDefault = company.IsDefault;
+
+        _companyEditorVisible = true;
+    }
+
+    private void CloseCompanyEditor()
+    {
+        if (_savingCompany)
+            return;
+
+        _companyEditorVisible = false;
+        _editingCompanyId = null;
+
+        ResetCompanyModel();
+    }
+
+    private async Task SaveCompanyAsync()
+    {
+        if (_savingCompany || _companyForm is null)
+            return;
+
+        await _companyForm.ValidateAsync();
+
+        if (!_companyForm.IsValid)
+            return;
+
+        try
+        {
+            _savingCompany = true;
+
+            await using var db =
+                await DbFactory.CreateDbContextAsync();
+
+            var duplicateTaxCode =
+                await db.CompanyProfiles.AnyAsync(x =>
+                    x.TaxCode == _companyModel.TaxCode.Trim() &&
+                    x.Id != _editingCompanyId);
+
+            if (duplicateTaxCode)
+            {
+                Snackbar.Add(
+                    "Mã số thuế đã tồn tại.",
+                    Severity.Warning);
+
+                return;
+            }
+
+            CompanyProfile company;
+
+            if (_editingCompanyId.HasValue)
+            {
+                company = await db.CompanyProfiles
+                    .FirstOrDefaultAsync(x =>
+                        x.Id == _editingCompanyId.Value &&
+                        x.ManagedByUserId == UserId)
+                    ?? throw new InvalidOperationException(
+                        "Không tìm thấy hồ sơ doanh nghiệp.");
+            }
+            else
+            {
+                company = new CompanyProfile
+                {
+                    ManagedByUserId = UserId,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                db.CompanyProfiles.Add(company);
+            }
+
+            if (_companyModel.IsDefault)
+            {
+                var currentDefaults =
+                    await db.CompanyProfiles
+                        .Where(x =>
+                            x.ManagedByUserId == UserId &&
+                            x.Id != company.Id &&
+                            x.IsDefault)
+                        .ToListAsync();
+
+                foreach (var item in currentDefaults)
+                {
+                    item.IsDefault = false;
+                    item.UpdatedAt = DateTime.UtcNow;
+                }
+            }
+
+            company.CompanyName =
+                _companyModel.CompanyName.Trim();
+
+            company.TaxCode =
+                _companyModel.TaxCode.Trim();
+
+            company.BusinessLicenseNumber =
+                NullIfEmpty(
+                    _companyModel.BusinessLicenseNumber);
+
+            company.Address =
+                _companyModel.Address.Trim();
+
+            company.PhoneNumber =
+                NullIfEmpty(_companyModel.PhoneNumber);
+
+            company.Email =
+                NullIfEmpty(_companyModel.Email);
+
+            company.RepresentativeName =
+                _companyModel.RepresentativeName.Trim();
+
+            company.RepresentativePosition =
+                NullIfEmpty(
+                    _companyModel.RepresentativePosition);
+
+            company.RepresentativeCitizenId =
+                _companyModel.RepresentativeCitizenId.Trim();
+
+            company.RepresentativeCitizenIdIssuedDate =
+                _companyModel.RepresentativeCitizenIdIssuedDate;
+
+            company.RepresentativeCitizenIdIssuedPlace =
+                NullIfEmpty(
+                    _companyModel
+                        .RepresentativeCitizenIdIssuedPlace);
+
+            company.BankAccountNumber =
+                NullIfEmpty(
+                    _companyModel.BankAccountNumber);
+
+            company.BankName =
+                NullIfEmpty(_companyModel.BankName);
+
+            company.IsActive =
+                _companyModel.IsActive;
+
+            company.IsDefault =
+                _companyModel.IsDefault;
+
+            company.UpdatedAt =
+                DateTime.UtcNow;
+
+            await db.SaveChangesAsync();
+
+            Snackbar.Add(
+                _editingCompanyId.HasValue
+                    ? "Cập nhật hồ sơ thành công."
+                    : "Thêm hồ sơ thành công.",
+                Severity.Success);
+
+            CloseCompanyEditor();
+
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _savingCompany = false;
+        }
+    }
+
+    private async Task SetDefaultAsync(Guid companyId)
+    {
+        try
+        {
+            await using var db =
+                await DbFactory.CreateDbContextAsync();
+
+            var companies = await db.CompanyProfiles
+                .Where(x => x.ManagedByUserId == UserId)
+                .ToListAsync();
+
+            foreach (var company in companies)
+            {
+                company.IsDefault =
+                    company.Id == companyId;
+
+                company.UpdatedAt =
+                    DateTime.UtcNow;
+            }
+
+            await db.SaveChangesAsync();
+
+            Snackbar.Add(
+                "Đã cập nhật hồ sơ mặc định.",
+                Severity.Success);
+
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task DeleteCompanyAsync(
+        CompanyProfile company)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Xóa hồ sơ doanh nghiệp",
+            $"Bạn có chắc muốn xóa hồ sơ “{company.CompanyName}” không?",
+            yesText: "Xóa",
+            cancelText: "Hủy");
+
+        if (confirmed != true)
+            return;
+
+        try
+        {
+            await using var db =
+                await DbFactory.CreateDbContextAsync();
+
+            var entity = await db.CompanyProfiles
+                .FirstOrDefaultAsync(x =>
+                    x.Id == company.Id &&
+                    x.ManagedByUserId == UserId);
+
+            if (entity is null)
+                return;
+
+            db.CompanyProfiles.Remove(entity);
+
+            await db.SaveChangesAsync();
+
+            Snackbar.Add(
+                "Đã xóa hồ sơ doanh nghiệp.",
+                Severity.Success);
+
+            await LoadAsync();
+        }
+        catch (DbUpdateException)
+        {
+            Snackbar.Add(
+                "Không thể xóa hồ sơ vì đang được hợp đồng sử dụng.",
+                Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private void ResetCompanyModel()
+    {
+        _companyModel.CompanyName = string.Empty;
+        _companyModel.TaxCode = string.Empty;
+        _companyModel.BusinessLicenseNumber = null;
+        _companyModel.Address = string.Empty;
+        _companyModel.PhoneNumber = null;
+        _companyModel.Email = null;
+        _companyModel.RepresentativeName = string.Empty;
+        _companyModel.RepresentativePosition = null;
+        _companyModel.RepresentativeCitizenId =
+            string.Empty;
+        _companyModel.RepresentativeCitizenIdIssuedDate =
+            null;
+        _companyModel.RepresentativeCitizenIdIssuedPlace =
+            null;
+        _companyModel.BankAccountNumber = null;
+        _companyModel.BankName = null;
+        _companyModel.IsActive = true;
+        _companyModel.IsDefault = false;
+    }
+
+    private void ShowIdentityErrors(
+        IEnumerable<IdentityError> errors)
+    {
+        foreach (var error in errors)
+        {
+            Snackbar.Add(
+                error.Description,
+                Severity.Error);
+        }
+    }
+
+    private static string? NullIfEmpty(
+        string? value)
+    {
+        return string.IsNullOrWhiteSpace(value)
+            ? null
+            : value.Trim();
+    }
+
+    private sealed class AccountModel
+    {
+        public string FullName { get; set; } = string.Empty;
+
+        public string? EmployeeCode { get; set; }
+
+        public string? PhoneNumber { get; set; }
+
+        public string? Email { get; set; }
+
+        public bool IsActive { get; set; }
+
+        public bool MustChangePassword { get; set; }
+    }
+
+    private sealed class CompanyModel
+    {
+        public string CompanyName { get; set; } =
+            string.Empty;
+
+        public string TaxCode { get; set; } =
+            string.Empty;
+
+        public string? BusinessLicenseNumber { get; set; }
+
+        public string Address { get; set; } =
+            string.Empty;
+
+        public string? PhoneNumber { get; set; }
+
+        public string? Email { get; set; }
+
+        public string RepresentativeName { get; set; } =
+            string.Empty;
+
+        public string? RepresentativePosition { get; set; }
+
+        public string RepresentativeCitizenId { get; set; } =
+            string.Empty;
+
+        public DateTime? RepresentativeCitizenIdIssuedDate
+        {
+            get;
+            set;
+        }
+
+        public string? RepresentativeCitizenIdIssuedPlace
+        {
+            get;
+            set;
+        }
+
+        public string? BankAccountNumber { get; set; }
+
+        public string? BankName { get; set; }
+
+        public bool IsActive { get; set; }
+
+        public bool IsDefault { get; set; }
+    }
+}

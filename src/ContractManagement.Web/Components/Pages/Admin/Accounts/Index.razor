@@ -1,0 +1,216 @@
+﻿@page "/admin/accounts"
+@attribute [Authorize(Roles = "Admin")]
+
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>Quản lý tài khoản</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.False" Class="py-6">
+    <MudStack Row="true"
+              Justify="Justify.SpaceBetween"
+              AlignItems="AlignItems.Center"
+              Class="mb-5">
+
+        <div>
+            <MudText Typo="Typo.h4">
+                Quản lý tài khoản
+            </MudText>
+
+            <MudText Typo="Typo.body2"
+                     Color="Color.Secondary">
+                Quản lý tài khoản và hồ sơ doanh nghiệp
+            </MudText>
+        </div>
+
+        <MudTextField T="string"
+                      @bind-Value="_search"
+                      Placeholder="Tìm tên, tài khoản, mã nhân viên..."
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Search"
+                      Immediate="true"
+                      Clearable="true"
+                      Variant="Variant.Outlined"
+                      Margin="Margin.Dense"
+                      Style="min-width:320px;" />
+    </MudStack>
+
+    @if (_loading)
+    {
+        <MudProgressLinear Indeterminate="true"
+                           Color="Color.Primary" />
+    }
+    else
+    {
+        <MudTable T="AccountListItem"
+                  Items="@FilteredItems"
+                  Hover="true"
+                  Striped="true"
+                  Breakpoint="Breakpoint.Sm"
+                  Elevation="1">
+
+            <HeaderContent>
+                <MudTh>Tài khoản</MudTh>
+                <MudTh>Họ tên</MudTh>
+                <MudTh>Mã nhân viên</MudTh>
+                <MudTh>Số điện thoại</MudTh>
+                <MudTh>Hồ sơ doanh nghiệp</MudTh>
+                <MudTh>Trạng thái</MudTh>
+                <MudTh Style="width:120px;"></MudTh>
+            </HeaderContent>
+
+            <RowTemplate>
+                <MudTd DataLabel="Tài khoản">
+                    <MudText Typo="Typo.subtitle2">
+                        @context.UserName
+                    </MudText>
+                </MudTd>
+
+                <MudTd DataLabel="Họ tên">
+                    @context.FullName
+                </MudTd>
+
+                <MudTd DataLabel="Mã nhân viên">
+                    @(context.EmployeeCode ?? "—")
+                </MudTd>
+
+                <MudTd DataLabel="Số điện thoại">
+                    @(context.PhoneNumber ?? "—")
+                </MudTd>
+
+                <MudTd DataLabel="Hồ sơ doanh nghiệp">
+                    <MudChip T="string"
+                             Size="Size.Small"
+                             Color="Color.Info"
+                             Variant="Variant.Outlined">
+                        @context.CompanyCount hồ sơ
+                    </MudChip>
+                </MudTd>
+
+                <MudTd DataLabel="Trạng thái">
+                    <MudChip T="string"
+                             Size="Size.Small"
+                             Color="@(context.IsActive
+                                                              ? Color.Success
+                                                              : Color.Error)">
+                        @(context.IsActive
+                                            ? "Hoạt động"
+                                            : "Ngừng hoạt động")
+                </MudChip>
+            </MudTd>
+
+                <MudTd>
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                   Color="Color.Primary"
+                                   Href="@($"/admin/accounts/{context.Id}")" />
+                </MudTd>
+            </RowTemplate>
+
+            <NoRecordsContent>
+                <MudText Class="pa-4">
+                    Không tìm thấy tài khoản phù hợp.
+                </MudText>
+            </NoRecordsContent>
+
+            <PagerContent>
+                <MudTablePager />
+            </PagerContent>
+        </MudTable>
+        }
+</MudContainer>
+
+@code {
+    private bool _loading = true;
+    private string? _search;
+
+    private readonly List<AccountListItem> _items = [];
+
+    private IEnumerable<AccountListItem> FilteredItems
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(_search))
+                return _items;
+
+            var keyword = _search.Trim();
+
+            return _items.Where(x =>
+                Contains(x.UserName, keyword) ||
+                Contains(x.FullName, keyword) ||
+                Contains(x.EmployeeCode, keyword) ||
+                Contains(x.PhoneNumber, keyword));
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            _loading = true;
+
+            await using var db =
+                await DbFactory.CreateDbContextAsync();
+
+            var items = await db.Users
+                .AsNoTracking()
+                .Select(user => new AccountListItem
+                {
+                    Id = user.Id,
+                    UserName = user.UserName ?? string.Empty,
+                    FullName = user.FullName,
+                    EmployeeCode = user.EmployeeCode,
+                    PhoneNumber = user.PhoneNumber,
+                    IsActive = user.IsActive,
+                    CompanyCount = user.ManagedCompanies.Count
+                })
+                .OrderBy(x => x.FullName)
+                .ToListAsync();
+
+            _items.Clear();
+            _items.AddRange(items);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(
+                $"Không thể tải danh sách tài khoản: {ex.Message}",
+                Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private static bool Contains(
+        string? value,
+        string keyword)
+    {
+        return !string.IsNullOrWhiteSpace(value) &&
+               value.Contains(
+                   keyword,
+                   StringComparison.OrdinalIgnoreCase);
+    }
+
+    private sealed class AccountListItem
+    {
+        public string Id { get; set; } = string.Empty;
+
+        public string UserName { get; set; } = string.Empty;
+
+        public string FullName { get; set; } = string.Empty;
+
+        public string? EmployeeCode { get; set; }
+
+        public string? PhoneNumber { get; set; }
+
+        public bool IsActive { get; set; }
+
+        public int CompanyCount { get; set; }
+    }
+}

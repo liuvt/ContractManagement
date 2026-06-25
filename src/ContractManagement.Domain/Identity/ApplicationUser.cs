@@ -1,3 +1,4 @@
+﻿using ContractManagement.Domain.Companies;
 using ContractManagement.Domain.Contracts;
 using ContractManagement.Domain.Customers;
 using ContractManagement.Domain.Drivers;
@@ -30,4 +31,8 @@ public class ApplicationUser : IdentityUser
 
     public ICollection<Customer> CreatedCustomers { get; set; }
         = new List<Customer>();
+
+    // Một tài khoản quản lý nhiều doanh nghiệp
+    public ICollection<CompanyProfile> ManagedCompanies { get; set; }
+        = new List<CompanyProfile>();
 }

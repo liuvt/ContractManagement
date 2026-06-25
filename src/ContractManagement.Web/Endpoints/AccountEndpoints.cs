@@ -1,5 +1,7 @@
-using ContractManagement.Domain.Identity;
+﻿using ContractManagement.Domain.Identity;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using System;
 
 namespace ContractManagement.Web.Endpoints;
 
@@ -27,7 +29,8 @@ public static class AccountEndpoints
         UserManager<ApplicationUser> userManager)
     {
         var form =
-            await httpContext.Request.ReadFormAsync();
+            await httpContext.Request.ReadFormAsync(
+                httpContext.RequestAborted);
 
         var loginName =
             form["LoginName"]
@@ -35,55 +38,105 @@ public static class AccountEndpoints
                 .Trim();
 
         var password =
-            form["Password"].ToString();
+            form["Password"]
+                .ToString();
 
         var rememberMe =
             string.Equals(
                 form["RememberMe"],
                 "true",
+                StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(
+                form["RememberMe"],
+                "on",
                 StringComparison.OrdinalIgnoreCase);
 
         var returnUrl =
-            form["ReturnUrl"].ToString();
+            form["ReturnUrl"]
+                .ToString();
 
         if (string.IsNullOrWhiteSpace(loginName) ||
             string.IsNullOrWhiteSpace(password))
         {
-            return Results.Redirect(
-                "/account/login?error=invalid");
+            return RedirectToLogin(
+                "invalid",
+                returnUrl);
         }
 
-        ApplicationUser? user = null;
+        var normalizedUserName =
+            userManager.NormalizeName(loginName);
 
-        if (loginName.Contains('@'))
-        {
-            user =
-                await userManager.FindByEmailAsync(
-                    loginName);
-        }
+        var normalizedEmail =
+            userManager.NormalizeEmail(loginName);
 
-        user ??=
-            await userManager.FindByNameAsync(
-                loginName);
-
-        if (user is null)
-        {
-            user = userManager.Users
-                .FirstOrDefault(x =>
+        /*
+         * Không dùng:
+         * - FindByNameAsync()
+         * - FindByEmailAsync()
+         *
+         * Vì các hàm trên sử dụng SingleOrDefaultAsync().
+         * Nếu database có dữ liệu trùng, ứng dụng sẽ phát sinh:
+         * Sequence contains more than one element.
+         */
+        var matchedUsers =
+            await userManager.Users
+                .AsNoTracking()
+                .Where(x =>
+                    x.NormalizedUserName == normalizedUserName ||
+                    x.NormalizedEmail == normalizedEmail ||
                     x.PhoneNumber == loginName ||
-                    x.EmployeeCode == loginName);
+                    x.EmployeeCode == loginName)
+                .OrderByDescending(x => x.IsActive)
+                .ThenBy(x => x.CreatedAt)
+                .Take(2)
+                .ToListAsync(
+                    httpContext.RequestAborted);
+
+        if (matchedUsers.Count == 0)
+        {
+            return RedirectToLogin(
+                "invalid",
+                returnUrl);
         }
+
+        /*
+         * Không tự chọn tài khoản đầu tiên nếu có nhiều tài khoản
+         * cùng khớp thông tin đăng nhập.
+         *
+         * Việc tự chọn có thể khiến người dùng đăng nhập nhầm
+         * tài khoản của người khác.
+         */
+        if (matchedUsers.Count > 1)
+        {
+            return RedirectToLogin(
+                "duplicate",
+                returnUrl);
+        }
+
+        var matchedUser = matchedUsers[0];
+
+        /*
+         * Lấy lại user có tracking trước khi gọi Identity.
+         * Bản AsNoTracking chỉ dùng để kiểm tra trùng dữ liệu.
+         */
+        var user =
+            await userManager.Users
+                .FirstOrDefaultAsync(
+                    x => x.Id == matchedUser.Id,
+                    httpContext.RequestAborted);
 
         if (user is null)
         {
-            return Results.Redirect(
-                "/account/login?error=invalid");
+            return RedirectToLogin(
+                "invalid",
+                returnUrl);
         }
 
         if (!user.IsActive)
         {
-            return Results.Redirect(
-                "/account/login?error=inactive");
+            return RedirectToLogin(
+                "inactive",
+                returnUrl);
         }
 
         var result =
@@ -95,14 +148,30 @@ public static class AccountEndpoints
 
         if (result.IsLockedOut)
         {
-            return Results.Redirect(
-                "/account/login?error=locked");
+            return RedirectToLogin(
+                "locked",
+                returnUrl);
+        }
+
+        if (result.IsNotAllowed)
+        {
+            return RedirectToLogin(
+                "notallowed",
+                returnUrl);
+        }
+
+        if (result.RequiresTwoFactor)
+        {
+            return RedirectToLogin(
+                "twofactor",
+                returnUrl);
         }
 
         if (!result.Succeeded)
         {
-            return Results.Redirect(
-                "/account/login?error=invalid");
+            return RedirectToLogin(
+                "invalid",
+                returnUrl);
         }
 
         if (IsLocalUrl(returnUrl))
@@ -113,26 +182,73 @@ public static class AccountEndpoints
         var roles =
             await userManager.GetRolesAsync(user);
 
-        return Results.Redirect(
-            roles.Contains("Admin")
-                ? "/admin/dashboard"
-                : "/driver/dashboard");
+        if (roles.Contains(
+                "Admin",
+                StringComparer.OrdinalIgnoreCase))
+        {
+            return Results.Redirect(
+                "/admin/dashboard");
+        }
+
+        if (roles.Contains(
+                "Driver",
+                StringComparer.OrdinalIgnoreCase))
+        {
+            return Results.Redirect(
+                "/driver/dashboard");
+        }
+
+        /*
+         * Tài khoản đăng nhập thành công nhưng chưa được gán role.
+         */
+        await signInManager.SignOutAsync();
+
+        return RedirectToLogin(
+            "norole",
+            returnUrl);
     }
 
     private static async Task<IResult> LogoutAsync(
+        HttpContext httpContext,
         SignInManager<ApplicationUser> signInManager)
     {
         await signInManager.SignOutAsync();
 
-        return Results.Redirect("/account/login");
+        var returnUrl =
+            httpContext.Request.Query["returnUrl"]
+                .ToString();
+
+        if (IsLocalUrl(returnUrl))
+        {
+            return Results.Redirect(returnUrl);
+        }
+
+        return Results.Redirect(
+            "/account/login");
+    }
+
+    private static IResult RedirectToLogin(
+        string error,
+        string? returnUrl)
+    {
+        var url =
+            "/account/login?error=" +
+            Uri.EscapeDataString(error);
+
+        if (IsLocalUrl(returnUrl))
+        {
+            url +=
+                "&returnUrl=" +
+                Uri.EscapeDataString(returnUrl!);
+        }
+
+        return Results.Redirect(url);
     }
 
     private static bool IsLocalUrl(string? url)
     {
-        if (string.IsNullOrWhiteSpace(url))
-            return false;
-
-        return url.StartsWith('/') &&
+        return !string.IsNullOrWhiteSpace(url) &&
+               url[0] == '/' &&
                !url.StartsWith("//") &&
                !url.StartsWith("/\\");
     }

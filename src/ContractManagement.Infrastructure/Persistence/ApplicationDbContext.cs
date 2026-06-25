@@ -1,3 +1,4 @@
+using ContractManagement.Domain.Companies;
 using ContractManagement.Domain.Contracts;
 using ContractManagement.Domain.Customers;
 using ContractManagement.Domain.Drivers;
@@ -11,7 +12,10 @@ namespace ContractManagement.Infrastructure.Persistence;
 public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
     : IdentityDbContext<ApplicationUser>(options)
 {
+    //Profiles
     public DbSet<DriverProfile> DriverProfiles => Set<DriverProfile>();
+    public DbSet<CompanyProfile> CompanyProfiles => Set<CompanyProfile>();
+
     public DbSet<DriverSignature> DriverSignatures => Set<DriverSignature>();
     public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<ContractType> ContractTypes => Set<ContractType>();
@@ -25,6 +29,14 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     {
         base.OnModelCreating(builder);
         builder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
+
+
+        ConfigureApplicationUser(builder);
+    }
+
+    private static void ConfigureApplicationUser(
+        ModelBuilder builder)
+    {
         builder.Entity<ApplicationUser>(entity =>
         {
             entity.Property(x => x.FullName)

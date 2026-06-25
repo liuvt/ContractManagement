@@ -145,7 +145,7 @@ dotnet user-secrets set "ConnectionStrings:DefaultConnection" "..." --project sr
 dotnet clean
 dotnet restore
 dotnet build
-dotnet ef migrations add UpdateDriverProfile --project src/ContractManagement.Infrastructure --startup-project src/ContractManagement.Web
+dotnet ef migrations add AddCompanyProfile --project src/ContractManagement.Infrastructure --startup-project src/ContractManagement.Web
 dotnet ef database update --project src/ContractManagement.Infrastructure --startup-project src/ContractManagement.Web
 dotnet watch run /a --project src/ContractManagement.Web
 ```
