@@ -84,6 +84,10 @@ builder.Services.AddScoped<
     IDriverProfileService,
     DriverProfileService>();
 
+builder.Services.AddScoped<
+    IAdminAccountService,
+    AdminAccountService>();
+
 var app = builder.Build();
 
 if (!app.Environment.IsDevelopment())

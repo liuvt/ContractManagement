@@ -1,17 +1,17 @@
 ﻿@page "/admin/accounts"
 @attribute [Authorize(Roles = "Admin")]
 
-@inject IDbContextFactory<ApplicationDbContext> DbFactory
-@inject NavigationManager Navigation
+@inject IAdminAccountService AdminAccountService
 @inject ISnackbar Snackbar
 
 <PageTitle>Quản lý tài khoản</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.False" Class="py-6">
+
     <MudStack Row="true"
               Justify="Justify.SpaceBetween"
               AlignItems="AlignItems.Center"
-              Class="mb-5">
+              Class="admin-account-header mb-5">
 
         <div>
             <MudText Typo="Typo.h4">
@@ -25,7 +25,7 @@
         </div>
 
         <MudTextField T="string"
-                      @bind-Value="_search"
+                      @bind-Value="_searchText"
                       Placeholder="Tìm tên, tài khoản, mã nhân viên..."
                       Adornment="Adornment.Start"
                       AdornmentIcon="@Icons.Material.Filled.Search"
@@ -33,41 +33,71 @@
                       Clearable="true"
                       Variant="Variant.Outlined"
                       Margin="Margin.Dense"
-                      Style="min-width:320px;" />
+                      Class="admin-account-search" />
     </MudStack>
 
     @if (_loading)
     {
-        <MudProgressLinear Indeterminate="true"
-                           Color="Color.Primary" />
+        <MudPaper Elevation="1" Class="pa-6">
+            <MudStack AlignItems="AlignItems.Center"
+                      Spacing="3">
+
+                <MudProgressCircular Indeterminate="true"
+                                     Color="Color.Primary" />
+
+                <MudText Color="Color.Secondary">
+                    Đang tải danh sách tài khoản...
+                </MudText>
+            </MudStack>
+        </MudPaper>
+    }
+    else if (_items.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info"
+                  Variant="Variant.Outlined">
+            Chưa có tài khoản nào trong hệ thống.
+        </MudAlert>
     }
     else
     {
-        <MudTable T="AccountListItem"
+        <MudTable T="AdminAccountListItem"
                   Items="@FilteredItems"
                   Hover="true"
                   Striped="true"
                   Breakpoint="Breakpoint.Sm"
-                  Elevation="1">
+                  Elevation="1"
+                  RowsPerPage="10">
 
             <HeaderContent>
                 <MudTh>Tài khoản</MudTh>
-                <MudTh>Họ tên</MudTh>
+                <MudTh>Họ và tên</MudTh>
                 <MudTh>Mã nhân viên</MudTh>
                 <MudTh>Số điện thoại</MudTh>
+                <MudTh>Email</MudTh>
                 <MudTh>Hồ sơ doanh nghiệp</MudTh>
                 <MudTh>Trạng thái</MudTh>
-                <MudTh Style="width:120px;"></MudTh>
+                <MudTh Style="width:90px;"></MudTh>
             </HeaderContent>
 
             <RowTemplate>
                 <MudTd DataLabel="Tài khoản">
-                    <MudText Typo="Typo.subtitle2">
-                        @context.UserName
-                    </MudText>
+                    <MudStack Row="true"
+                              AlignItems="AlignItems.Center"
+                              Spacing="2">
+
+                        <MudAvatar Color="Color.Primary"
+                                   Size="Size.Small">
+                            <MudIcon Icon="@Icons.Material.Filled.Person"
+                                     Size="Size.Small" />
+                        </MudAvatar>
+
+                        <MudText Typo="Typo.subtitle2">
+                            @context.UserName
+                        </MudText>
+                    </MudStack>
                 </MudTd>
 
-                <MudTd DataLabel="Họ tên">
+                <MudTd DataLabel="Họ và tên">
                     @context.FullName
                 </MudTd>
 
@@ -77,6 +107,10 @@
 
                 <MudTd DataLabel="Số điện thoại">
                     @(context.PhoneNumber ?? "—")
+                </MudTd>
+
+                <MudTd DataLabel="Email">
+                    @(context.Email ?? "—")
                 </MudTd>
 
                 <MudTd DataLabel="Hồ sơ doanh nghiệp">
@@ -89,57 +123,96 @@
                 </MudTd>
 
                 <MudTd DataLabel="Trạng thái">
-                    <MudChip T="string"
-                             Size="Size.Small"
-                             Color="@(context.IsActive
-                                                              ? Color.Success
-                                                              : Color.Error)">
-                        @(context.IsActive
-                                            ? "Hoạt động"
-                                            : "Ngừng hoạt động")
-                </MudChip>
-            </MudTd>
+                    <MudStack Spacing="1">
+                        <MudChip T="string"
+                                 Size="Size.Small"
+                                 Color="@(context.IsActive
+                                                                      ? Color.Success
+                                                                      : Color.Error)">
+                            @(context.IsActive
+                                                    ? "Hoạt động"
+                                                    : "Ngừng hoạt động")
+                    </MudChip>
+
+                    @if (context.MustChangePassword)
+                        {
+                            <MudChip T="string"
+                                     Size="Size.Small"
+                                     Color="Color.Warning"
+                                     Variant="Variant.Outlined">
+                                Yêu cầu đổi mật khẩu
+                            </MudChip>
+                        }
+                    </MudStack>
+                </MudTd>
 
                 <MudTd>
-                    <MudIconButton Icon="@Icons.Material.Filled.Edit"
-                                   Color="Color.Primary"
-                                   Href="@($"/admin/accounts/{context.Id}")" />
+                    <MudTooltip Text="Xem và cập nhật">
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                       Color="Color.Primary"
+                                       Href="@($"/admin/accounts/{context.Id}")" />
+                    </MudTooltip>
                 </MudTd>
             </RowTemplate>
 
             <NoRecordsContent>
-                <MudText Class="pa-4">
+                <MudText Class="pa-4"
+                         Color="Color.Secondary">
                     Không tìm thấy tài khoản phù hợp.
                 </MudText>
             </NoRecordsContent>
 
             <PagerContent>
-                <MudTablePager />
+                <MudTablePager PageSizeOptions="@(new int[] { 10, 20, 50 })"
+                               RowsPerPageString="Số dòng"
+                               InfoFormat="{first_item}-{last_item} / {all_items}" />
             </PagerContent>
         </MudTable>
-        }
+    }
+
 </MudContainer>
+
+<style>
+    .admin-account-search {
+        width: 360px;
+        max-width: 100%;
+    }
+
+    @@media (max-width: 600px) {
+        .admin-account-header {
+            flex-direction: column;
+            align-items: stretch !important;
+            gap: 16px;
+        }
+
+        .admin-account-search {
+            width: 100%;
+        }
+    }
+</style>
 
 @code {
     private bool _loading = true;
-    private string? _search;
+    private string? _searchText;
 
-    private readonly List<AccountListItem> _items = [];
+    private IReadOnlyList<AdminAccountListItem> _items =
+        Array.Empty<AdminAccountListItem>();
 
-    private IEnumerable<AccountListItem> FilteredItems
+    private IEnumerable<AdminAccountListItem> FilteredItems
     {
         get
         {
-            if (string.IsNullOrWhiteSpace(_search))
+            if (string.IsNullOrWhiteSpace(_searchText))
                 return _items;
 
-            var keyword = _search.Trim();
+            var keyword = _searchText.Trim();
 
-            return _items.Where(x =>
-                Contains(x.UserName, keyword) ||
-                Contains(x.FullName, keyword) ||
-                Contains(x.EmployeeCode, keyword) ||
-                Contains(x.PhoneNumber, keyword));
+            return _items.Where(item =>
+                Contains(item.UserName, keyword) ||
+                Contains(item.FullName, keyword) ||
+                Contains(item.EmployeeCode, keyword) ||
+                Contains(item.PhoneNumber, keyword) ||
+                Contains(item.Email, keyword));
         }
     }
 
@@ -154,26 +227,8 @@
         {
             _loading = true;
 
-            await using var db =
-                await DbFactory.CreateDbContextAsync();
-
-            var items = await db.Users
-                .AsNoTracking()
-                .Select(user => new AccountListItem
-                {
-                    Id = user.Id,
-                    UserName = user.UserName ?? string.Empty,
-                    FullName = user.FullName,
-                    EmployeeCode = user.EmployeeCode,
-                    PhoneNumber = user.PhoneNumber,
-                    IsActive = user.IsActive,
-                    CompanyCount = user.ManagedCompanies.Count
-                })
-                .OrderBy(x => x.FullName)
-                .ToListAsync();
-
-            _items.Clear();
-            _items.AddRange(items);
+            _items =
+                await AdminAccountService.GetAccountsAsync();
         }
         catch (Exception ex)
         {
@@ -195,22 +250,5 @@
                value.Contains(
                    keyword,
                    StringComparison.OrdinalIgnoreCase);
-    }
-
-    private sealed class AccountListItem
-    {
-        public string Id { get; set; } = string.Empty;
-
-        public string UserName { get; set; } = string.Empty;
-
-        public string FullName { get; set; } = string.Empty;
-
-        public string? EmployeeCode { get; set; }
-
-        public string? PhoneNumber { get; set; }
-
-        public bool IsActive { get; set; }
-
-        public int CompanyCount { get; set; }
     }
 }

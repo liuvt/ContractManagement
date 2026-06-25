@@ -16,5 +16,3 @@ public sealed class UpdateAdminAccountRequest
 
     public bool MustChangePassword { get; set; }
 }
-
-UpdateAdminAccountAndProfileRequest
